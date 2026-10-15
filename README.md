@@ -49,6 +49,45 @@ src/
 └── provider-*/     # five dialect provider plugins (mysql/postgres/oracle/dm/kingbase)
 ```
 
+## Tenant line
+
+Row-level tenant filtering — the Service-Definition counterpart of Ling's `BasicTenantInnerInterceptor` / `BasicTenantHandler`. The request scope rides on `AsyncLocalStorage` (the `BasicTenantHolder` thread-slot semantics); a wrapped database facade rewrites the **bound values** of `column = ?` predicates (and INSERT column positions) to the session tenant at execution time — SQL text stays owned by the statement author. Dialect-free: any `RdbDatabase` shape can be wrapped, providers take no part.
+
+```ts
+import {
+  ignoreTenantLine,
+  runWithTenantLine,
+  wrapTenantLineDatabase,
+  type TenantLineRule,
+} from '@ling2/ling-rdb'
+
+// Rule = tenant column + controlled-table list (Ling tenantTableList / EXCLUDE_TABLES):
+// predicates on tables outside the list are left untouched.
+const rule: TenantLineRule = { column: 'f_tenant_id', tables: ['base_user', 'base_role'] }
+const tenantDb = wrapTenantLineDatabase(db, rule)
+
+// Inside a request scope, every query/execute through tenantDb has its tenant
+// predicates' bound values rewritten to the session tenant:
+await runWithTenantLine({ tenantId: '000000', filter: true }, async () => {
+  await tenantDb.query('SELECT * FROM base_user WHERE f_tenant_id = ?', ['whatever'])
+  // → the bound value is rewritten to '000000'
+})
+
+// Superadmin bypass (BasicTenantInterceptor.doTenantFilter counterpart):
+// predicates on tables ∉ adminTables are neutralized to `1 = 1` (cross-partition
+// reads); adminTables members keep filtering with the admin session tenant;
+// INSERT is never neutralized (Ling processInsert pass-through).
+await runWithTenantLine(
+  { tenantId: adminSessionTenant, filter: true, adminBypass: { adminTables: new Set() } },
+  () => tenantDb.query('SELECT * FROM base_user LIMIT 10'),
+)
+
+// @TenantIgnore counterpart: opt out inside a scoped block, outer scope auto-restored.
+await ignoreTenantLine(() => provisioningStep())
+```
+
+Write path: `runWithMbpFill({ tenantId, operatorId }, () => …)` makes every `BaseMapper` write inside the scope auto-stamp the audit columns (`mbp` domain).
+
 ## Development
 
 ```sh

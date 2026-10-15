@@ -2,6 +2,13 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本语义遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.0.2] - 2026-10-15
+
+### 文档
+
+- README 双语补「租户拦截（tenant line）」节：`wrapTenantLineDatabase` + `runWithTenantLine` 请求作用域改写、超管旁路（`adminBypass` 中和 `1 = 1`）、`@TenantIgnore` 豁免（`ignoreTenantLine`）与 `runWithMbpFill` 写路径盖戳的完整示例。
+- `examples/kit-smoke` 增补租户改写往返（受控表绑定值改写 + 豁免作用域不改写）——README 示例=CI 门禁里真跑的代码。
+
 ## [1.0.1] - 2026-10-15
 
 ### 文档

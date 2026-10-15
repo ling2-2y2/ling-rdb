@@ -49,6 +49,44 @@ src/
 └── provider-*/     # 五方言 provider 插件（mysql/postgres/oracle/dm/kingbase）
 ```
 
+## 租户拦截（tenant line）
+
+行级租户过滤——Ling `BasicTenantInnerInterceptor`/`BasicTenantHandler` 的 Service-Definition 层对应物。请求作用域走 `AsyncLocalStorage`（`BasicTenantHolder` 线程槽语义）；包装后的数据库外观在执行期把 `列 = ?` 谓词的**绑定值**（及 INSERT 列位）改写为会话租户——SQL 文本归语句方拥有，本层只换值。方言无关：任何 `RdbDatabase` 形状都能包，provider 零参与。
+
+```ts
+import {
+  ignoreTenantLine,
+  runWithTenantLine,
+  wrapTenantLineDatabase,
+  type TenantLineRule,
+} from '@ling2/ling-rdb'
+
+// 规则 = 租户列名 + 受控表清单（Ling tenantTableList / EXCLUDE_TABLES 对应）：
+// 清单外表上的谓词一律不动。
+const rule: TenantLineRule = { column: 'f_tenant_id', tables: ['base_user', 'base_role'] }
+const tenantDb = wrapTenantLineDatabase(db, rule)
+
+// 请求作用域内，经 tenantDb 的每条 query/execute 的租户谓词绑定值
+// 自动改写为会话租户：
+await runWithTenantLine({ tenantId: '000000', filter: true }, async () => {
+  await tenantDb.query('SELECT * FROM base_user WHERE f_tenant_id = ?', ['随便填'])
+  // → 绑定值被改写为 '000000'
+})
+
+// 超管旁路（BasicTenantInterceptor.doTenantFilter 对应物）：∉ adminTables
+// 的受控表谓词被中和为 `1 = 1`（跨分区读写）；adminTables 成员表仍按超管
+// 会话租户过滤；INSERT 永不中和（Ling processInsert 纯透传）。
+await runWithTenantLine(
+  { tenantId: adminSessionTenant, filter: true, adminBypass: { adminTables: new Set() } },
+  () => tenantDb.query('SELECT * FROM base_user LIMIT 10'),
+)
+
+// @TenantIgnore 对应物：作用域内豁免改写，外层上下文自动恢复。
+await ignoreTenantLine(() => provisioningStep())
+```
+
+写路径：`runWithMbpFill({ tenantId, operatorId }, () => …)` 让作用域内所有 `BaseMapper` 写操作自动盖审计戳（mbp 域）。
+
 ## 开发
 
 ```sh

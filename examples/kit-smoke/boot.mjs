@@ -4,9 +4,12 @@ import {
   RdbDatabaseRegistry,
   RdbError,
   buildRdbListQuery,
+  ignoreTenantLine,
   numberedPlaceholders,
   rdbDatabaseServiceKey,
+  runWithTenantLine,
   upsertSql,
+  wrapTenantLineDatabase,
 } from '../../src/index.ts'
 
 // ① 注册表语义：登记/派生 key/未知名 fail loud
@@ -46,5 +49,19 @@ try {
 } catch (e) {
   if (!(e instanceof RdbError)) throw e
 }
+
+// ⑤ 租户行拦截（README「租户拦截」示例的可跑形态）：
+//    受控表 `列 = ?` 谓词绑定值在执行期改写为会话租户；豁免作用域内不改写。
+const rule = { column: 'f_tenant_id', tables: ['base_user'] }
+const tenantDb = wrapTenantLineDatabase(
+  { name: 'demo', dialect: 'postgresql', query: async (sql, params) => ({ sql, params }) },
+  rule,
+)
+const captured = await runWithTenantLine({ tenantId: '000000', filter: true }, async () =>
+  tenantDb.query('SELECT * FROM base_user WHERE f_tenant_id = ?', ['whatever']))
+if (captured.params[0] !== '000000') throw new Error('租户绑定值改写失败')
+const ignored = await ignoreTenantLine(() =>
+  tenantDb.query('SELECT * FROM base_user WHERE f_tenant_id = ?', ['raw']))
+if (ignored.params[0] !== 'raw') throw new Error('豁免作用域不应改写')
 
 console.log('smoke OK')
