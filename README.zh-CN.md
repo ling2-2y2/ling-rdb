@@ -51,71 +51,52 @@ src/
 
 ## 租户拦截（tenant line）
 
-行级租户过滤——Ling `BasicTenantInnerInterceptor`/`BasicTenantHandler` 的 Service-Definition 层对应物。请求作用域走 `AsyncLocalStorage`（`BasicTenantHolder` 线程槽语义）；包装后的数据库外观在执行期把 `列 = ?` 谓词的**绑定值**（及 INSERT 列位）改写为会话租户——SQL 文本归语句方拥有，本层只换值。方言无关：任何 `RdbDatabase` 形状都能包，provider 零参与。
+行级租户过滤——Ling `BasicTenantInnerInterceptor`/`BasicTenantHandler` 的 Service-Definition 层对应物。**设计基线：业务 SQL 零租户谓词。**请求作用域走 `AsyncLocalStorage`；包装后的数据库外观在执行期把缺失的租户谓词编译进语句。
+
+### 配置方式
+
+一条规则 = 租户列名 + 受控表清单（`TenantLineRule.tables`）。租户列非标准的特殊表**独立配置一条规则**（列名自持）；包装接受一条或多条规则：
 
 ```ts
-import {
-  ignoreTenantLine,
-  runWithTenantLine,
-  wrapTenantLineDatabase,
-  type TenantLineRule,
-} from '@ling2/ling-rdb'
+import { wrapTenantLineDatabase, type TenantLineRule } from '@ling2/ling-rdb'
 
-// 规则 = 租户列名 + 受控表清单（Ling tenantTableList / EXCLUDE_TABLES 对应）：
-// 清单外表上的谓词一律不动。
-const rule: TenantLineRule = { column: 'f_tenant_id', tables: ['base_user', 'base_role'] }
-const tenantDb = wrapTenantLineDatabase(db, rule)
-
-// 请求作用域内，经 tenantDb 的每条 query/execute 的租户谓词绑定值
-// 自动改写为会话租户：
-await runWithTenantLine({ tenantId: '000000', filter: true }, async () => {
-  await tenantDb.query('SELECT * FROM base_user WHERE f_tenant_id = ?', ['随便填'])
-  // → 绑定值被改写为 '000000'
-})
-
-// 超管旁路（BasicTenantInterceptor.doTenantFilter 对应物）：∉ adminTables
-// 的受控表谓词被中和为 `1 = 1`（跨分区读写）；adminTables 成员表仍按超管
-// 会话租户过滤；INSERT 永不中和（Ling processInsert 纯透传）。
-await runWithTenantLine(
-  { tenantId: adminSessionTenant, filter: true, adminBypass: { adminTables: new Set() } },
-  () => tenantDb.query('SELECT * FROM base_user LIMIT 10'),
-)
-
-// @TenantIgnore 对应物：作用域内豁免改写，外层上下文自动恢复。
-await ignoreTenantLine(() => provisioningStep())
+// 标准列受控表一条规则
+const stdRule: TenantLineRule = { column: 'f_tenant_id', tables: ['teacher', 'student'] }
+// 非标准租户列的特殊表独立配置（列名自持）
+const relRule: TenantLineRule = { column: 'tenant_code', tables: ['teacher_student'] }
+// 非受控表（如 classroom）不进任何清单 → 永不注入
+const tenantDb = wrapTenantLineDatabase(db, [stdRule, relRule])
 ```
 
-**多表 JOIN 查询支持**：每条 `别名.租户列 = ?` 谓词经 FROM/JOIN 别名表归属到所属表，只有受控表才改写；裸列谓词归属主表（首个 FROM 表）。非受控表的谓词原样透传：
+### 使用方式
 
 ```ts
+import { runWithTenantLine } from '@ling2/ling-rdb'
+
+// 业务 SQL 零租户谓词——受控表的谓词由拦截层在执行期编译注入：
 await runWithTenantLine({ tenantId: '000000', filter: true }, async () => {
   await tenantDb.query(
-    'SELECT u.*, d.f_name FROM base_user u JOIN base_dept d' +
-    ' ON u.f_dept_id = d.f_id WHERE u.f_tenant_id = ? AND d.f_tenant_id = ? AND f_tenant_id = ?',
-    ['raw_u', 'raw_d', 'raw_bare'],
+    'SELECT t.name, s.name AS student_name FROM teacher t'
+    + ' JOIN teacher_student ts ON t.id = ts.teacher_id'
+    + ' JOIN student s ON s.id = ts.student_id',
   )
-  // → 参数变为 ['000000', 'raw_d', '000000']
-  //    base_user（别名 u）两处谓词都改写（别名命中 + 裸列归主表）；
-  //    base_dept 不在受控清单 → 谓词原样保留。
+  // → 编译为：… WHERE t.f_tenant_id = ? AND ts.tenant_code = ? AND s.f_tenant_id = ?
+  //    参数组尾部追加 ['000000', '000000', '000000']
 })
 ```
 
-已知边界：语句族解析覆盖 FROM/JOIN 形态上的 `<别名.>列 = ?` 谓词——子查询内嵌谓词不改写（这类语句请放 `ignoreTenantLine` 内显式带租户值）。
+编译规则：
 
-写路径：`runWithMbpFill({ tenantId, operatorId }, () => …)` 让作用域内所有 `BaseMapper` 写操作自动盖审计戳（mbp 域）。
+- 受控表出现在顶层（FROM/JOIN）且语句未手写该表租户谓词 → WHERE 尾自动追加 `<前缀.>列 = ?`（插在顶层 GROUP/ORDER/LIMIT 之前），参数组尾部绑会话租户。
+- 非受控表永不注入；多表 JOIN 时主表无别名也用表名限定（杜绝同名列歧义）。
+- 存量兼容：语句已手写受控表谓词 → 只换绑定值不重复注入。
+- 超管旁路（`adminBypass`）：天然不注入=跨分区读写；`ignoreTenantLine` = `@TenantIgnore` 豁免。
+- INSERT 自动补租户列（列清单尾追加 + 每组绑一次会话租户）；已含租户列 → 列位换值。
+- **fail loud 防线**：受控表出现在无法保证过滤的形态（子查询/CTE/派生表/MySQL 多表 JOIN UPDATE）→ 直接抛错，绝不静默跳过（静默=租户泄漏）；出口=改写为顶层形态，或在 `ignoreTenantLine` 内显式携带租户值。
 
-## 开发
+### 覆盖面
 
-```sh
-pnpm install
-pnpm typecheck     # tsc --noEmit（strict）
-pnpm test          # vitest；provider 集成套件按 DSH_*_URL 门控（无实例=skip 非 fail；务必指向专用测试库）
-pnpm build         # tsdown（js）+ tsc d.ts 模块树 -> dist/
-pnpm check:dts     # 外部消费者视角 d.ts 冒烟（符号/default/Context.rdb 增强）
-pnpm smoke         # 可跑示例：examples/kit-smoke
-```
-
-> kysely 是 exact pin（`0.29.5`）：0.x minor 可破坏——任何升级必须复跑 orm 黄金断言（`tests/orm/compile.spec.ts`）。
+语句族全矩阵（基础/聚合/JOIN/子查询/窗口/CTE/DML/边界）+ 师生域多规则套件（teacher/student/师生关系表含非标准租户列）钉在 `tests/tenant-line-matrix.spec.ts`——本节示例即同套件里真跑的代码。
 
 ## 环境变量
 

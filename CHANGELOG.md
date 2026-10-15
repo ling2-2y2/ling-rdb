@@ -2,6 +2,20 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本语义遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.1.0] - 2026-10-15
+
+### 新增（设计基线升级：换值式 → 注入式）
+
+- **注入式租户过滤**（设计基线：业务 SQL 零租户谓词）：受控表在顶层（FROM/JOIN）出现而语句未写该表租户谓词时，执行期自动在 WHERE 尾追加 `<前缀.>列 = ?` 并绑会话租户。括号深度感知扫描——子查询/窗口函数括号区域不误伤；多表 JOIN 主表无别名也用表名限定防歧义。
+- **受控清单独立配置**：每条 `TenantLineRule` 自持列名+受控表清单；**非标准租户列的特殊表独立配置**（`{ column: 'tenant_code', tables: [...] }`）；`wrapTenantLineDatabase` 接受规则数组（多规则按链依次生效）。
+- **INSERT 自动补租户列**（Ling processInsert 对应物）：列清单尾追加租户列 + 每个 VALUES 组尾追加占位符并绑会话租户；已含租户列 → 列位换值。INSERT 语句形态解析弹性化（表名与括号间空格可有可无、关键词大小写不敏感——修复存量正则要求 `users (` 字面空格的隐形限制）。
+- **fail loud 防线**：受控表出现在子查询/CTE/派生表等深度>0 区域、或 MySQL 多表 JOIN UPDATE 等无法保证过滤的形态 → 直接抛错（绝不静默跳过造成租户泄漏）。
+- **用户令测试矩阵**：Q001~Q707 八组 SQL 形态（基础/聚合/JOIN/子查询/窗口/CTE/DML/边界）+ 师生域多规则套件（teacher/student/teacher_student 非标准列 + 受控清单变量 + 复杂 UPDATE/DELETE/查询）共 52 例钉入 `tests/tenant-line-matrix.spec.ts`；存量语句（手写谓词）零行为变化（换值路径保留）。
+
+### 文档
+
+- README 双语「租户拦截」节重写：注入式设计基线/受控清单配置方式/非标准列独立配置/使用方式/fail loud 边界全说明。
+
 ## [1.0.3] - 2026-10-15
 
 ### 文档

@@ -51,72 +51,52 @@ src/
 
 ## Tenant line
 
-Row-level tenant filtering — the Service-Definition counterpart of Ling's `BasicTenantInnerInterceptor` / `BasicTenantHandler`. The request scope rides on `AsyncLocalStorage` (the `BasicTenantHolder` thread-slot semantics); a wrapped database facade rewrites the **bound values** of `column = ?` predicates (and INSERT column positions) to the session tenant at execution time — SQL text stays owned by the statement author. Dialect-free: any `RdbDatabase` shape can be wrapped, providers take no part.
+Row-level tenant filtering — the Service-Definition counterpart of Ling's `BasicTenantInnerInterceptor` / `BasicTenantHandler`. **Design baseline: business SQL carries zero tenant predicates.** The request scope rides on `AsyncLocalStorage`; a wrapped database facade compiles the missing tenant predicates in at execution time.
+
+### 配置方式（Configuration）
+
+One rule = tenant column + controlled-table list. Tables whose tenant column is non-standard get their **own rule with its own column name**; wrap with one or many rules:
 
 ```ts
-import {
-  ignoreTenantLine,
-  runWithTenantLine,
-  wrapTenantLineDatabase,
-  type TenantLineRule,
-} from '@ling2/ling-rdb'
+import { wrapTenantLineDatabase, type TenantLineRule } from '@ling2/ling-rdb'
 
-// Rule = tenant column + controlled-table list (Ling tenantTableList / EXCLUDE_TABLES):
-// predicates on tables outside the list are left untouched.
-const rule: TenantLineRule = { column: 'f_tenant_id', tables: ['base_user', 'base_role'] }
-const tenantDb = wrapTenantLineDatabase(db, rule)
-
-// Inside a request scope, every query/execute through tenantDb has its tenant
-// predicates' bound values rewritten to the session tenant:
-await runWithTenantLine({ tenantId: '000000', filter: true }, async () => {
-  await tenantDb.query('SELECT * FROM base_user WHERE f_tenant_id = ?', ['whatever'])
-  // → the bound value is rewritten to '000000'
-})
-
-// Superadmin bypass (BasicTenantInterceptor.doTenantFilter counterpart):
-// predicates on tables ∉ adminTables are neutralized to `1 = 1` (cross-partition
-// reads); adminTables members keep filtering with the admin session tenant;
-// INSERT is never neutralized (Ling processInsert pass-through).
-await runWithTenantLine(
-  { tenantId: adminSessionTenant, filter: true, adminBypass: { adminTables: new Set() } },
-  () => tenantDb.query('SELECT * FROM base_user LIMIT 10'),
-)
-
-// @TenantIgnore counterpart: opt out inside a scoped block, outer scope auto-restored.
-await ignoreTenantLine(() => provisioningStep())
+// 标准列受控表一条规则
+const stdRule: TenantLineRule = { column: 'f_tenant_id', tables: ['teacher', 'student'] }
+// 非标准租户列的特殊表独立配置（列名自持）
+const relRule: TenantLineRule = { column: 'tenant_code', tables: ['teacher_student'] }
+// 非受控表（如 classroom）不进任何清单 → 永不注入
+const tenantDb = wrapTenantLineDatabase(db, [stdRule, relRule])
 ```
 
-**Multi-table JOINs are supported**: every `alias.tenant_column = ?` predicate is attributed to its table via the FROM/JOIN alias map, and only controlled tables get rewritten; a bare column predicate belongs to the primary (first FROM) table. Non-controlled tables' predicates pass through untouched:
+### 使用方式（Usage）
 
 ```ts
+import { runWithTenantLine } from '@ling2/ling-rdb'
+
+// 业务 SQL 零租户谓词——受控表的谓词由拦截层在执行期编译注入：
 await runWithTenantLine({ tenantId: '000000', filter: true }, async () => {
   await tenantDb.query(
-    'SELECT u.*, d.f_name FROM base_user u JOIN base_dept d' +
-    ' ON u.f_dept_id = d.f_id WHERE u.f_tenant_id = ? AND d.f_tenant_id = ? AND f_tenant_id = ?',
-    ['raw_u', 'raw_d', 'raw_bare'],
+    'SELECT t.name, s.name AS student_name FROM teacher t'
+    + ' JOIN teacher_student ts ON t.id = ts.teacher_id'
+    + ' JOIN student s ON s.id = ts.student_id',
   )
-  // → params: ['000000', 'raw_d', '000000']
-  //    base_user (alias u) rewritten ×2 (aliased + bare→primary);
-  //    base_dept not in the rule list → its predicate kept as-is.
+  // → 编译为：… WHERE t.f_tenant_id = ? AND ts.tenant_code = ? AND s.f_tenant_id = ?
+  //    参数组尾部追加 ['000000', '000000', '000000']
 })
 ```
 
-Known boundary: the statement-family parser covers `<alias.>column = ?` predicates on FROM/JOIN shapes — subquery-embedded predicates are not rewritten (keep those statements inside `ignoreTenantLine` with explicit tenant values).
+Compilation rules:
 
-Write path: `runWithMbpFill({ tenantId, operatorId }, () => …)` makes every `BaseMapper` write inside the scope auto-stamp the audit columns (`mbp` domain).
+- A controlled table appearing at top level (FROM/JOIN) without a hand-written tenant predicate gets `<prefix.>column = ?` appended at the WHERE tail (before top-level GROUP/ORDER/LIMIT), with the session tenant appended to the parameter list.
+- Non-controlled tables are never touched; in multi-table JOINs the primary table is name-qualified even without an alias (no ambiguous columns).
+- Legacy compatibility: statements that DO hand-write a controlled table's predicate keep the value-rewrite path (no double predicate).
+- Superadmin bypass (`adminBypass`): injection simply does not happen — cross-partition by design; `ignoreTenantLine` = `@TenantIgnore` opt-out.
+- INSERT auto-adds the tenant column (appended to the column list + one bound placeholder per VALUES group); when the column is already present it falls back to slot value-rewrite.
+- **Fail loud**: a controlled table mentioned where injection cannot guarantee filtering (subqueries / CTEs / derived tables / MySQL multi-table JOIN UPDATE) throws — it never silently skips (that would be a tenant leak). Exits: rewrite as a top-level JOIN/WHERE form, or carry the tenant explicitly inside `ignoreTenantLine`.
 
-## Development
+### Coverage
 
-```sh
-pnpm install
-pnpm typecheck     # tsc --noEmit (strict)
-pnpm test          # vitest; provider integration suites gated by DSH_MYSQL_URL / DSH_POSTGRES_URL / DSH_ORACLE_URL / DSH_DM_URL / DSH_KINGBASE_URL (no instance = skip, not fail; always point them at dedicated test databases)
-pnpm build         # tsdown (js) + tsc d.ts module tree -> dist/
-pnpm check:dts     # external-consumer d.ts smoke (symbols, default export, Context.rdb augmentation)
-pnpm smoke         # runnable example: examples/kit-smoke
-```
-
-> kysely is an exact pin (`0.29.5`): 0.x minors can break — rerun the orm golden assertions (`tests/orm/compile.spec.ts`) on any upgrade.
+The full statement-family matrix (basics / aggregates / joins / subqueries / window functions / CTE / DML / edge cases) plus a multi-rule school-domain suite (teacher / student / teacher-student relation with a non-standard tenant column) is pinned in `tests/tenant-line-matrix.spec.ts` — the README examples above run as code inside the same suite.
 
 ## Environment variables
 

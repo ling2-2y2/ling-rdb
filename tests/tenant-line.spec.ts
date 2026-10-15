@@ -8,6 +8,7 @@ import type { RdbConnection, RdbDatabase } from '../src/hub/types.ts'
 import {
   currentTenantLine,
   ignoreTenantLine,
+  injectTenantLinePredicates,
   neutralizeTenantLine,
   rewriteTenantLineParams,
   runWithTenantLine,
@@ -329,5 +330,92 @@ describe('wrapTenantLineDatabase 超管旁路（adminBypass 语境）', () => {
     await runWithTenantLine({ tenantId: '610001', filter: true }, () => wrapped.query(SELECT, ['admin', '000000']))
     expect(calls[1]!.sql).toBe(SELECT)
     expect(calls[1]!.params).toEqual(['admin', '610001'])
+  })
+})
+
+
+describe('注入式租户过滤（业务 SQL 零租户谓词——设计基线）', () => {
+  const RULE2: TenantLineRule = { column: 'f_tenant_id', tables: ['base_user'] }
+  const inject = (sql: string, params: readonly unknown[], tenantId = '000000') =>
+    injectTenantLinePredicates(sql, params, RULE2, tenantId)
+
+  it('单表 SELECT 无 WHERE：注入 WHERE 谓词，参数尾追加会话租户', () => {
+    const r = inject('SELECT * FROM base_user', [])
+    expect(r.sql).toBe('SELECT * FROM base_user WHERE f_tenant_id = ?')
+    expect(r.params).toEqual(['000000'])
+  })
+
+  it('WHERE 已存在：谓词追加在 WHERE 尾（ORDER BY/LIMIT 之前）', () => {
+    const r = inject('SELECT * FROM base_user WHERE f_age > 18 ORDER BY f_id LIMIT 10', ['x'])
+    expect(r.sql).toBe('SELECT * FROM base_user WHERE f_age > 18 AND f_tenant_id = ? ORDER BY f_id LIMIT 10')
+    expect(r.params).toEqual(['x', '000000'])
+  })
+
+  it('JOIN 多表：受控别名注入，非受控别名不注入；主表有别名时注入别名形态', () => {
+    const r = inject(
+      'SELECT u.*, d.f_name FROM base_user u JOIN base_dept d ON u.f_dept_id = d.f_id WHERE u.f_age > 18',
+      ['x'],
+    )
+    expect(r.sql).toBe(
+      'SELECT u.*, d.f_name FROM base_user u JOIN base_dept d ON u.f_dept_id = d.f_id'
+      + ' WHERE u.f_age > 18 AND u.f_tenant_id = ?',
+    )
+    expect(r.params).toEqual(['x', '000000'])
+  })
+
+  it('已手写受控表谓词：不重复注入（换值路径负责）', () => {
+    const r = inject('SELECT * FROM base_user WHERE f_tenant_id = ?', ['whatever'])
+    expect(r.sql).toBe('SELECT * FROM base_user WHERE f_tenant_id = ?')
+    expect(r.params).toEqual(['whatever'])
+  })
+
+  it('非受控表语句：零注入', () => {
+    const r = inject('SELECT * FROM base_dept WHERE f_id = ?', ['x'])
+    expect(r.sql).toBe('SELECT * FROM base_dept WHERE f_id = ?')
+    expect(r.params).toEqual(['x'])
+  })
+
+  it('UPDATE/DELETE：无 WHERE 在语句尾注入', () => {
+    const u = inject('UPDATE base_user SET f_name = ?', ['n'])
+    expect(u.sql).toBe('UPDATE base_user SET f_name = ? WHERE f_tenant_id = ?')
+    expect(u.params).toEqual(['n', '000000'])
+    const d = inject('DELETE FROM base_user WHERE f_age > 18', [])
+    expect(d.sql).toBe('DELETE FROM base_user WHERE f_age > 18 AND f_tenant_id = ?')
+    expect(d.params).toEqual(['000000'])
+  })
+
+  it('自连接：两个别名各注入一次（主表别名形态优先，不注裸列）', () => {
+    const r = inject(
+      'SELECT a.* FROM base_user a JOIN base_user b ON a.f_pid = b.f_id WHERE a.f_age > 18',
+      ['x'],
+    )
+    expect(r.sql).toBe(
+      'SELECT a.* FROM base_user a JOIN base_user b ON a.f_pid = b.f_id'
+      + ' WHERE a.f_age > 18 AND a.f_tenant_id = ? AND b.f_tenant_id = ?',
+    )
+    expect(r.params).toEqual(['x', '000000', '000000'])
+  })
+
+  it('端到端：业务 SQL 零租户谓词，经包装外观编译出租户条件', async () => {
+    const calls: Array<{ sql: string; params?: readonly unknown[] }> = []
+    const db: RdbDatabase = {
+      name: 'fake', dialect: 'mysql', identity: 'fake:1',
+      query: async (sql, params) => { calls.push({ sql, params }); return [] },
+      execute: async () => ({ affectedRows: 0, insertId: 0 }),
+      withConnection: async <T,>(work: (conn: RdbConnection) => Promise<T>) => work({
+        query: async (sql: string, params?: readonly unknown[]) => { calls.push({ sql, params }); return [] },
+        execute: async (sql: string, params?: readonly unknown[]) => { calls.push({ sql, params }); return { affectedRows: 0, insertId: 0 } },
+      } as never),
+      transaction: async <T,>(work: (conn: RdbConnection) => Promise<T>) => work({} as never),
+      close: async () => {},
+    }
+    const wrapped = wrapTenantLineDatabase(db, RULE2)
+    await runWithTenantLine({ tenantId: '000000', filter: true }, () =>
+      wrapped.query(
+        'SELECT u.*, d.f_name FROM base_user u JOIN base_dept d ON u.f_dept_id = d.f_id WHERE u.f_age > 18',
+        ['x'],
+      ))
+    expect(calls[0]!.sql).toContain('AND u.f_tenant_id = ?')
+    expect(calls[0]!.params).toEqual(['x', '000000'])
   })
 })
