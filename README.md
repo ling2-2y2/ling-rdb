@@ -86,6 +86,23 @@ await runWithTenantLine(
 await ignoreTenantLine(() => provisioningStep())
 ```
 
+**Multi-table JOINs are supported**: every `alias.tenant_column = ?` predicate is attributed to its table via the FROM/JOIN alias map, and only controlled tables get rewritten; a bare column predicate belongs to the primary (first FROM) table. Non-controlled tables' predicates pass through untouched:
+
+```ts
+await runWithTenantLine({ tenantId: '000000', filter: true }, async () => {
+  await tenantDb.query(
+    'SELECT u.*, d.f_name FROM base_user u JOIN base_dept d' +
+    ' ON u.f_dept_id = d.f_id WHERE u.f_tenant_id = ? AND d.f_tenant_id = ? AND f_tenant_id = ?',
+    ['raw_u', 'raw_d', 'raw_bare'],
+  )
+  // → params: ['000000', 'raw_d', '000000']
+  //    base_user (alias u) rewritten ×2 (aliased + bare→primary);
+  //    base_dept not in the rule list → its predicate kept as-is.
+})
+```
+
+Known boundary: the statement-family parser covers `<alias.>column = ?` predicates on FROM/JOIN shapes — subquery-embedded predicates are not rewritten (keep those statements inside `ignoreTenantLine` with explicit tenant values).
+
 Write path: `runWithMbpFill({ tenantId, operatorId }, () => …)` makes every `BaseMapper` write inside the scope auto-stamp the audit columns (`mbp` domain).
 
 ## Development

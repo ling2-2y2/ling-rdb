@@ -2,6 +2,13 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本语义遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.0.3] - 2026-10-15
+
+### 文档
+
+- README 双语「租户拦截」节补**多表 JOIN** 说明与示例：`别名.租户列 = ?` 谓词经 FROM/JOIN 别名表归属判定，受控表改写、非受控表透传、裸列归主表；已知边界=子查询内嵌谓词不改写（放 `ignoreTenantLine` 显式带值）。
+- `examples/kit-smoke` 增补三谓词 JOIN 改写往返（`['000000','raw_d','000000']` 钉）。
+
 ## [1.0.2] - 2026-10-15
 
 ### 文档

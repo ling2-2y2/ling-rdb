@@ -64,4 +64,14 @@ const ignored = await ignoreTenantLine(() =>
   tenantDb.query('SELECT * FROM base_user WHERE f_tenant_id = ?', ['raw']))
 if (ignored.params[0] !== 'raw') throw new Error('豁免作用域不应改写')
 
+// ⑥ 多表 JOIN：别名谓词按归属表判定——受控表改写、非受控表透传、裸列归主表
+const joined = await runWithTenantLine({ tenantId: '000000', filter: true }, async () =>
+  tenantDb.query(
+    'SELECT u.*, d.f_name FROM base_user u JOIN base_dept d' +
+    ' ON u.f_dept_id = d.f_id WHERE u.f_tenant_id = ? AND d.f_tenant_id = ? AND f_tenant_id = ?',
+    ['raw_u', 'raw_d', 'raw_bare']))
+if (JSON.stringify(joined.params) !== JSON.stringify(['000000', 'raw_d', '000000'])) {
+  throw new Error('JOIN 租户改写失败: ' + JSON.stringify(joined.params))
+}
+
 console.log('smoke OK')

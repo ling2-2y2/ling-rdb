@@ -85,6 +85,23 @@ await runWithTenantLine(
 await ignoreTenantLine(() => provisioningStep())
 ```
 
+**多表 JOIN 查询支持**：每条 `别名.租户列 = ?` 谓词经 FROM/JOIN 别名表归属到所属表，只有受控表才改写；裸列谓词归属主表（首个 FROM 表）。非受控表的谓词原样透传：
+
+```ts
+await runWithTenantLine({ tenantId: '000000', filter: true }, async () => {
+  await tenantDb.query(
+    'SELECT u.*, d.f_name FROM base_user u JOIN base_dept d' +
+    ' ON u.f_dept_id = d.f_id WHERE u.f_tenant_id = ? AND d.f_tenant_id = ? AND f_tenant_id = ?',
+    ['raw_u', 'raw_d', 'raw_bare'],
+  )
+  // → 参数变为 ['000000', 'raw_d', '000000']
+  //    base_user（别名 u）两处谓词都改写（别名命中 + 裸列归主表）；
+  //    base_dept 不在受控清单 → 谓词原样保留。
+})
+```
+
+已知边界：语句族解析覆盖 FROM/JOIN 形态上的 `<别名.>列 = ?` 谓词——子查询内嵌谓词不改写（这类语句请放 `ignoreTenantLine` 内显式带租户值）。
+
 写路径：`runWithMbpFill({ tenantId, operatorId }, () => …)` 让作用域内所有 `BaseMapper` 写操作自动盖审计戳（mbp 域）。
 
 ## 开发
