@@ -2,6 +2,12 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本语义遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.3.0] - 2026-10-16
+
+### 文档
+
+- README 双语补「多数据源」章（配置方式/消费者接线/事务）：宿主一库一行 + `database` 注册名 + eager fail loud；消费者 `static inject` + `rdbDatabaseServiceKey` 生命周期栅栏 + `ctx.rdb.database.get(name)` 按名解析；事务 = `transaction` 连接绑定 + `mapper.use(conn)` / `kyselyFor(db, conn)` 换绑混写（mbp 与 orm 同事务原子）+ 回滚语义 + `withConnection` 边界。示例对齐树内活例（datalayer.repository 事务混写）。
+
 ## [1.2.0] - 2026-10-15
 
 ### 新增（SQL 注入防线 + 用户令测试矩阵）

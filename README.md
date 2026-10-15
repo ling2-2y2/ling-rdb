@@ -122,6 +122,68 @@ Exits: rewrite as a top-level JOIN/WHERE form, or carry the tenant explicitly in
 
 The full statement-family matrix (basics / aggregates / joins / subqueries / window functions / CTE / DML / edge cases) plus a multi-rule school-domain suite (teacher / student / teacher-student relation with a non-standard tenant column) is pinned in `tests/tenant-line-matrix.spec.ts` — the README examples above run as code inside the same suite.
 
+## Multi-datasource
+
+**Design: named databases side by side — no runtime "switching".** Every provider row mounts one named database on the hub; consumers declare which names they need and resolve them by name. Cross-database work = resolve both and use each.
+
+### Host wiring (one row per database)
+
+Each provider plugin row defines one data source; the `database` field is the registry name consumers resolve by. Rows mount eagerly (pool bootstrap + connectivity check fail loud) and register as an effect (unregister before disconnect):
+
+```ts
+// rows in the host composition (conceptual — one per physical database):
+// rdb-postgres + { database: 'sessions', url: 'postgres://…/dsh_sessions' }
+// rdb-postgres + { database: 'users',    url: 'postgres://…/dsh_users' }
+// rdb-mysql    + { database: 'legacy',   url: 'mysql://…' }
+```
+
+Gated dialects (oracle / dm / kingbase) must not mount a row without an instance — eager bootstrap would fail the row at load.
+
+### Consumer wiring (declare, fence, resolve)
+
+```ts
+import { rdbDatabaseServiceKey, type RdbDatabase } from '@ling2/ling-rdb'
+
+export class OrderService {
+  // 'rdb' = the hub; 'orders' = this service's own provider row
+  static inject = ['rdb'] as const
+  private database!: RdbDatabase
+
+  async init(): Promise<void> {
+    await new Promise<void>((resolve, reject) => {
+      // lifecycle fence: wait until the provider row has registered its database
+      void this.ctx.inject([rdbDatabaseServiceKey('orders')], async () => {
+        try {
+          this.database = this.ctx.rdb.database.get('orders')   // fail loud on unknown names
+          resolve()
+        } catch (e) { reject(e) }
+      })
+    })
+  }
+}
+```
+
+Need two databases in one service? Fence and resolve each — `get('orders')` and `get('billing')` stay mounted side by side.
+
+### Transactions
+
+`transaction` binds one transaction-scoped connection to `work`: begin → work → commit; on rejection it rolls back and rethrows (a failing rollback aggregates both errors). Inside `work`, rebind mappers and Kysely to the transaction connection — `mapper.use(conn)` and `kyselyFor(db, conn)` — to mix the mbp and orm layers atomically:
+
+```ts
+import { kyselyFor } from '@ling2/ling-rdb'
+
+await this.database.transaction(async conn => {
+  const scopedMapper = this.mapper.use(conn)                  // mbp writes on the transaction
+  const scopedKysely = kyselyFor(schema, this.database, conn) // orm reads/writes on the same transaction
+
+  await scopedMapper.insert({ fullName: '张三', enCode: 'zs' })
+  await scopedKysely.insertInto('audit_log').values({ f_action: 'create' }).execute()
+  // any rejection here → whole transaction rolls back
+})
+```
+
+`withConnection(work)` acquires a connection without a transaction (multi-statement reads that should share one connection). Rollback semantics note: statements that only make sense inside an existing transaction must go through `transaction` — the bound driver fails loud on transaction primitives used outside it.
+
 ## Environment variables
 
 Provider integration suites are gated by their connection URL; unset = skip (not fail). Migration suites run DDL/DROP against the target — **dedicated test databases only, never a shared business instance**.

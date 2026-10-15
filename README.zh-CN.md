@@ -122,6 +122,68 @@ await runWithTenantLine({ tenantId: '000000', filter: true }, async () => {
 
 语句族全矩阵（基础/聚合/JOIN/子查询/窗口/CTE/DML/边界）+ 师生域多规则套件（teacher/student/师生关系表含非标准租户列）钉在 `tests/tenant-line-matrix.spec.ts`——本节示例即同套件里真跑的代码。
 
+## 多数据源
+
+**设计：命名多库并存——没有运行时"切换"动作。**每个 provider 行在 hub 上挂一个命名数据库；消费者声明自己需要哪些名字、按名解析。跨库操作=各自解析、各自使用。
+
+### 宿主装配（一库一行）
+
+每个方言 provider 插件行定义一个数据源；`database` 字段就是消费者解析用的注册名。行启动即 eager 建池验连（连不上整行拒启），注册即 effect（先除名后断连）：
+
+```ts
+// 宿主组合里的行（示意——一物理库一行）：
+// rdb-postgres + { database: 'sessions', url: 'postgres://…/dsh_sessions' }
+// rdb-postgres + { database: 'users',    url: 'postgres://…/dsh_users' }
+// rdb-mysql    + { database: 'legacy',   url: 'mysql://…' }
+```
+
+门控方言（oracle / dm / kingbase）无实例勿挂行——eager 建池会在装载期让整行报错。
+
+### 消费者接线（声明依赖、栅栏、按名解析）
+
+```ts
+import { rdbDatabaseServiceKey, type RdbDatabase } from '@ling2/ling-rdb'
+
+export class OrderService {
+  // 'rdb' = hub 本体；'orders' = 本服务自己的 provider 行
+  static inject = ['rdb'] as const
+  private database!: RdbDatabase
+
+  async init(): Promise<void> {
+    await new Promise<void>((resolve, reject) => {
+      // 生命周期栅栏：等 provider 行把库注册完成，防激活竞态
+      void this.ctx.inject([rdbDatabaseServiceKey('orders')], async () => {
+        try {
+          this.database = this.ctx.rdb.database.get('orders')   // 未知名 fail loud
+          resolve()
+        } catch (e) { reject(e) }
+      })
+    })
+  }
+}
+```
+
+一个服务要多个库就各自栅栏+各自解析——`get('orders')` 与 `get('billing')` 并存互不干扰。
+
+### 事务
+
+`transaction` 把一条事务级连接绑定给 `work`：begin → work → commit；work 拒绝时回滚并重抛（回滚本身也失败则聚合双错误）。`work` 内把 mapper 与 Kysely **换绑**到事务连接——`mapper.use(conn)` 与 `kyselyFor(db, conn)`——mbp 与 orm 两层即在同一事务内原子混写：
+
+```ts
+import { kyselyFor } from '@ling2/ling-rdb'
+
+await this.database.transaction(async conn => {
+  const scopedMapper = this.mapper.use(conn)                  // mbp 写走事务连接
+  const scopedKysely = kyselyFor(schema, this.database, conn) // orm 读写走同一事务
+
+  await scopedMapper.insert({ fullName: '张三', enCode: 'zs' })
+  await scopedKysely.insertInto('audit_log').values({ f_action: 'create' }).execute()
+  // 这里任何拒绝 → 整个事务回滚
+})
+```
+
+`withConnection(work)` 只借连接不开事务（多条语句共享一条连接的读场景）。边界说明：必须在事务内执行的语句原语（beginTransaction/commit/rollback）请走 `transaction`——绑定驱动在事务外调用会 fail loud。
+
 ## 环境变量
 
 provider 集成套件按各自连接 URL 门控；缺省=skip 非失败。迁移套件会对目标库跑 DDL/DROP——**务必专用测试库，绝不指向共享业务实例**。
