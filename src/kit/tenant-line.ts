@@ -100,28 +100,67 @@ const CLAUSE_KEYWORDS = new Set([
 ])
 
 /**
- * 把单引号字面量抹为同长的占位字符（保字符位置不变），使后续正则
- * 不会命中引号内文本；`''` 转义按 MySQL 语义跳过。**码元迭代**：
- * 掩码索引必须与原串 UTF-16 索引一一对应（中和改写按原串索引切片，
- * 码点迭代会让代理对错位）。
+ * 词法级掩码：把「单引号字面量内部」「行注释（`--` 至行尾）」「块注释」
+ * 统一抹为同长占位字符（保字符位置不变），使后续正则不会命中注释内伪装
+ * 的谓词/关键词/占位符（SQL 注入防线）；`''` 转义按 MySQL 语义跳过。
+ * **码元迭代**：掩码索引必须与原串 UTF-16 索引一一对应（中和改写按原串
+ * 索引切片，码点迭代会让代理对错位）。注释定界符（`--`、块注释定界与
+ * 换行）保留原字符——位置与语句结构可读性不变。
  */
+/** 掩码占位字符（字符串内部/注释内部统一用它抹平，保位不保值）。 */
+const M1 = '\u0001'
+
 function maskQuoted(sql: string): string {
   const chars = new Array<string>(sql.length)
-  let inQuote = false
-  for (let i = 0; i < sql.length; i++) {
+  let state: 'code' | 'string' | 'line' | 'block' = 'code'
+  let i = 0
+  while (i < sql.length) {
     const ch = sql[i]!
-    if (!inQuote) {
+    if (state === 'code') {
+      if (ch === "'") { chars[i] = ch; state = 'string'; i++; continue }
+      if (ch === '-' && sql[i + 1] === '-') { chars[i] = '-'; chars[i + 1] = '-'; state = 'line'; i += 2; continue }
+      if (ch === '/' && sql[i + 1] === '*') { chars[i] = '/'; chars[i + 1] = '*'; state = 'block'; i += 2; continue }
       chars[i] = ch
-      if (ch === "'") inQuote = true
+      i++
       continue
     }
-    if (ch === "'") {
-      if (sql[i + 1] === "'") { chars[i] = '\x01'; chars[i + 1] = '\x01'; i++ } else { chars[i] = ch; inQuote = false }
+    if (state === 'string') {
+      if (ch === "'") {
+        if (sql[i + 1] === "'") { chars[i] = M1; chars[i + 1] = M1; i += 2; continue }
+        chars[i] = ch
+        state = 'code'
+        i++
+        continue
+      }
+      chars[i] = M1
+      i++
       continue
     }
-    chars[i] = '\x01'
+    if (state === 'line') {
+      if (ch === '\n') { chars[i] = '\n'; state = 'code'; i++; continue }
+      chars[i] = M1
+      i++
+      continue
+    }
+    if (ch === '*' && sql[i + 1] === '/') { chars[i] = '*'; chars[i + 1] = '/'; state = 'code'; i += 2; continue }
+    chars[i] = M1
+    i++
   }
   return chars.join('')
+}
+
+/** 正则元字符转义（规则标识符——列名/表名来自配置，转义防误匹配）。 */
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/** 多语句守卫：顶层（深度 0）出现分号即抛——一条调用一条语句。 */
+function assertSingleStatement(masked: string, depth: readonly number[]): void {
+  for (let i = 0; i < masked.length; i++) {
+    if (masked[i] === ';' && depth[i] === 0) {
+      throw new Error('tenant-line: 不支持多语句文本（顶层分号）——请逐条执行')
+    }
+  }
 }
 
 /** 收集引号外全部 `?` 的字符位置（升序）。 */
@@ -213,15 +252,18 @@ function tenantLineOrdinals(sql: string, column: string, tables: Set<string>): n
     return ordinals
   }
 
-  const predicate = new RegExp(`(?:\\w+\\.)?${column}\\s*=\\s*\\?`, 'g')
+  const predicate = new RegExp(`((?:\\w+)\\.)?\\b${escapeRegExp(column)}\\s*=\\s*\\?`, 'g')
+  const columnQualifier = column.includes('.') ? column.split('.')[0]!.toLowerCase() + '.' : undefined
   for (const match of masked.matchAll(predicate)) {
     const at = match.index + match[0].length - 1
-    const ref = /^(\w+)\./.exec(match[0])
+    const aliasPrefix = match[1] !== undefined ? match[1].slice(0, -1).toLowerCase() : undefined
     let table: string | undefined
-    if (ref !== null) {
-      table = target.aliases?.get(ref[1]!)
-    } else {
+    if (aliasPrefix === undefined) {
       table = target.primary === '' ? undefined : target.primary
+    } else if (columnQualifier !== undefined && aliasPrefix === columnQualifier) {
+      table = target.primary === '' ? undefined : target.primary
+    } else {
+      table = target.aliases?.get(aliasPrefix)
     }
     if (table === undefined || !tables.has(table)) continue
     const ordinal = ordinalBefore(positions, at)
@@ -257,6 +299,7 @@ export function rewriteTenantLineParams(
   rule: TenantLineRule,
   tenantId: string,
 ): readonly unknown[] | undefined {
+  assertSingleStatement(maskQuoted(sql), depthScan(maskQuoted(sql)))
   if (params === undefined || params.length === 0) return params
   const tables = rule.tables instanceof Set ? rule.tables : new Set(rule.tables)
   const ordinals = tenantLineOrdinals(sql, rule.column, tables)
@@ -312,6 +355,17 @@ function topClauseEnd(masked: string, depth: readonly number[], from: number): n
   return masked.length
 }
 
+/**
+ * 规则标识符校验（配置面 fail loud）：列名/表名只认标识符形态（字母/下划
+ * 线起始，可含数字/$，可带一级点限定）——敌意或畸形配置（含括号/引号/分
+ * 号/空格等）在包装期直接抛错，杜绝借注入谓词通道夹带任意 SQL 文本。
+ */
+function assertRuleIdentifier(kind: string, name: string): void {
+  if (!/^[A-Za-z_][A-Za-z0-9_$]*(\.[A-Za-z_][A-Za-z0-9_$]*)?$/.test(name)) {
+    throw new Error(`tenant-line: 规则${kind} '${name}' 不是合法标识符（只认 [A-Za-z_] 开头的标识符，可带一级点限定）——拒绝装配以防注入夹带`)
+  }
+}
+
 function tablesOf(rule: TenantLineRule): Set<string> {
   return rule.tables instanceof Set ? rule.tables : new Set<string>(rule.tables)
 }
@@ -340,6 +394,7 @@ export function injectTenantLinePredicates(
   tenantId: string,
 ): TenantLineRewrite {
   const masked = maskQuoted(sql)
+  assertSingleStatement(masked, depthScan(masked))
   const verb = VERB_RE.exec(masked)?.[1]?.toUpperCase()
   if (verb === 'INSERT') return { sql, params }
   const scanVerbs = verb === 'SELECT' || verb === 'UPDATE' || verb === 'DELETE' || verb === 'WITH'
@@ -349,7 +404,7 @@ export function injectTenantLinePredicates(
   // fail loud 防线（先于形态解析）：WITH/EXPLAIN 等语句涉受控表于深度>0 → 抛错
   if (verb === 'WITH') {
     for (const table of tables) {
-      const re = new RegExp(`\\b${table}\\b`, 'i')
+      const re = new RegExp(`\\b${escapeRegExp(table)}\\b`, 'i')
       if (re.test(masked)) {
         throw new Error(
           `tenant-line: CTE 语句涉及受控表 '${table}'，无法保证内层 SELECT 的租户过滤`
@@ -368,7 +423,7 @@ export function injectTenantLinePredicates(
     const m = /\bUPDATE\s+(\w+)\s+SET\b/i.exec(masked)
     if (m !== null) primary = m[1]!
   } else {
-    const fromRe = /\bFROM\s+(\w+)(?:\s+(?!ON\b|WHERE\b|GROUP\b|ORDER\b|LIMIT\b|HAVING\b|LEFT\b|RIGHT\b|INNER\b|JOIN\b)(\w+))?/gi
+    const fromRe = /\bFROM\s+(\w+)(?:\s+(?!ON\b|WHERE\b|GROUP\b|ORDER\b|LIMIT\b|HAVING\b|LEFT\b|RIGHT\b|INNER\b|JOIN\b|UNION\b|EXCEPT\b|INTERSECT\b|WINDOW\b|FETCH\b|OFFSET\b)(\w+))?/gi
     for (const m of masked.matchAll(fromRe)) {
       if (depth[m.index ?? 0] !== 0) continue
       primary = m[1]!
@@ -386,15 +441,19 @@ export function injectTenantLinePredicates(
 
   // 已手写谓词的受控表（仅深度 0 谓词参与判定；表级命中=整表不注入）
   const writtenTables = new Set<string>()
-  const predRe = new RegExp(`(?:\\w+\\.)?${rule.column}\\s*=\\s*\\?`, 'gi')
+  const predRe = new RegExp(`((?:\\w+)\\.)?\\b${escapeRegExp(rule.column)}\\s*=\\s*\\?`, 'gi')
+  const columnQualifier = rule.column.includes('.') ? rule.column.split('.')[0]!.toLowerCase() + '.' : undefined
   for (const m of masked.matchAll(predRe)) {
     if (depth[m.index ?? 0] !== 0) continue
-    const ref = /^(\w+)\./i.exec(m[0])
-    const table = ref !== null
-      ? lowerPrimaryAlias !== undefined && ref[1]!.toLowerCase() === lowerPrimaryAlias
-        ? lowerPrimary
-        : aliases.get(ref[1]!.toLowerCase())
-      : lowerPrimary
+    const aliasPrefix = m[1] !== undefined ? m[1].slice(0, -1).toLowerCase() : undefined
+    let table: string | undefined
+    if (aliasPrefix === undefined) {
+      table = lowerPrimary
+    } else if (aliasPrefix === lowerPrimaryAlias || (columnQualifier !== undefined && aliasPrefix === columnQualifier)) {
+      table = lowerPrimary
+    } else {
+      table = aliases.get(aliasPrefix)
+    }
     if (table !== undefined && tables.has(table)) writtenTables.add(table)
   }
 
@@ -411,7 +470,7 @@ export function injectTenantLinePredicates(
 
   // fail loud 防线一：受控表在深度 >0 区域（子查询/CTE/派生表）被提及
   for (const table of tables) {
-    const re = new RegExp(`\\b${table}\\b`, 'gi')
+    const re = new RegExp(`\\b${escapeRegExp(table)}\\b`, 'gi')
     for (const m of masked.matchAll(re)) {
       if (depth[m.index ?? 0] > 0) {
         throw new Error(
@@ -424,7 +483,7 @@ export function injectTenantLinePredicates(
   // fail loud 防线二：受控表被顶层提及却未获注入（不可解析位置）
   const covered = new Set<string>([...writtenTables, ...pairs.map(p => p.table)])
   for (const table of tables) {
-    if (!covered.has(table) && new RegExp(`\\b${table}\\b`, 'i').test(masked)) {
+    if (!covered.has(table) && new RegExp(`\\b${escapeRegExp(table)}\\b`, 'i').test(masked)) {
       throw new Error(
         `tenant-line: 语句顶层涉及受控表 '${table}' 但解析失败，无法注入租户谓词`
         + '——请在 ignoreTenantLine 内显式携带租户值',
@@ -465,6 +524,7 @@ export function injectInsertTenantColumn(
   tenantId: string,
 ): TenantLineRewrite {
   const masked = maskQuoted(sql)
+  assertSingleStatement(masked, depthScan(masked))
   const head = /^\s*INSERT\s+INTO\s+(\w+)\s*\(([^)]*)\)\s*(VALUES|SELECT)\b/i.exec(masked)
   const table = head?.[1]?.toLowerCase() ?? ''
   if (table === '' || !tablesOf(rule).has(table)) return { sql, params }
@@ -551,6 +611,7 @@ export function neutralizeTenantLine(
   admin: { readonly adminTables: ReadonlySet<string>; readonly tenantId: string },
 ): TenantLineRewrite {
   const masked = maskQuoted(sql)
+  assertSingleStatement(masked, depthScan(masked))
   const positions = questionPositions(masked)
   if (positions.length === 0) return { sql, params }
   const target = statementTarget(masked)
@@ -558,13 +619,19 @@ export function neutralizeTenantLine(
   const tables = rule.tables instanceof Set ? rule.tables : new Set(rule.tables)
   const cuts: Array<{ start: number; end: number; ordinal: number }> = []
   const swap = new Set<number>()
-  const predicate = new RegExp(`(?:\\w+\\.)?${rule.column}\\s*=\\s*\\?`, 'g')
+  const predicate = new RegExp(`((?:\\w+)\\.)?\\b${escapeRegExp(rule.column)}\\s*=\\s*\\?`, 'g')
+  const columnQualifier = rule.column.includes('.') ? rule.column.split('.')[0]!.toLowerCase() + '.' : undefined
   for (const match of masked.matchAll(predicate)) {
     const at = match.index + match[0].length - 1
-    const ref = /^(\w+)\./.exec(match[0])
-    const table = ref !== null
-      ? target.aliases?.get(ref[1]!)
-      : target.primary === '' ? undefined : target.primary
+    const aliasPrefix = match[1] !== undefined ? match[1].slice(0, -1).toLowerCase() : undefined
+    let table: string | undefined
+    if (aliasPrefix === undefined) {
+      table = target.primary === '' ? undefined : target.primary
+    } else if (columnQualifier !== undefined && aliasPrefix === columnQualifier) {
+      table = target.primary === '' ? undefined : target.primary
+    } else {
+      table = target.aliases?.get(aliasPrefix)
+    }
     if (table === undefined || !tables.has(table)) continue
     const ordinal = ordinalBefore(positions, at)
     if (ordinal >= positions.length || ordinal >= (params?.length ?? 0)) continue
@@ -633,6 +700,10 @@ function interceptFor(rule: TenantLineRule): (sql: string, params?: readonly unk
  */
 export function wrapTenantLineDatabase(database: RdbDatabase, rules: TenantLineRule | readonly TenantLineRule[]): RdbDatabase {
   const list = Array.isArray(rules) ? rules : [rules]
+  for (const rule of list) {
+    assertRuleIdentifier('列名', rule.column)
+    for (const table of rule.tables) assertRuleIdentifier('受控表名', table)
+  }
   const interceptors = list.map(rule => interceptFor(rule))
   const intercept = (sql: string, params?: readonly unknown[]): TenantLineRewrite =>
     interceptors.reduce((acc, fn) => fn(acc.sql, acc.params), { sql, params } as TenantLineRewrite)

@@ -94,6 +94,30 @@ Compilation rules:
 - INSERT auto-adds the tenant column (appended to the column list + one bound placeholder per VALUES group); when the column is already present it falls back to slot value-rewrite.
 - **Fail loud**: a controlled table mentioned where injection cannot guarantee filtering (subqueries / CTEs / derived tables / MySQL multi-table JOIN UPDATE) throws — it never silently skips (that would be a tenant leak). Exits: rewrite as a top-level JOIN/WHERE form, or carry the tenant explicitly inside `ignoreTenantLine`.
 
+### SQL-injection defenses
+
+- **Tenant values stay parameterized end to end**: injected predicates are always `column = ?` + a bound parameter — even a payload like `'; DROP TABLE users; --` as the session tenant lands in params, never in SQL text (pinned per path).
+- **Lexical masking**: single-quoted literals (incl. `''` escapes), line comments (`--` to EOL) and block comments (`/* */`) are masked before scanning — semicolons inside strings don't trigger the multi-statement guard; fake predicates/placeholders inside comments are excluded from locating and rewriting (execution ordinals skip them).
+- **Multi-statement fail loud**: a top-level semicolon throws (one call, one statement).
+- **UNION guard**: a second UNION segment touching a controlled table throws (that segment can't be filtered); non-controlled second segments pass with only the first segment injected.
+- **Rule identifier validation**: columns/tables accept identifier shapes (one dot qualifier allowed); hostile configs throw at wrap time; left word boundaries keep a `tenant_id` rule from biting `f_tenant_id` and a `users` rule from touching `users_archive`.
+- All defenses pinned in `tests/tenant-line-sqli.spec.ts` (16 cases).
+
+### Unsupported shapes (fail loud — throws, never silently skipped = never a tenant leak)
+
+| Shape | Example | Why it throws |
+|---|---|---|
+| Subquery touching a controlled table | `SELECT * FROM products WHERE price > (SELECT AVG(price) FROM products)` | depth>0 occurrences can't be guaranteed filtered |
+| EXISTS / NOT EXISTS subquery | `SELECT * FROM users u WHERE EXISTS (SELECT 1 FROM orders o WHERE …)` | same (inner orders unfiltered) |
+| Correlated subquery | `SELECT o.* FROM orders o WHERE o.created_at = (SELECT MAX(o2.created_at) FROM orders o2 WHERE …)` | same |
+| CTE (WITH) | `WITH t AS (SELECT … FROM orders o) SELECT * FROM t WHERE …` | inner SELECT can't be injected |
+| Derived table | `… FROM (SELECT … FROM orders …) t` | inner SELECT can't be injected |
+| INSERT…SELECT | `INSERT INTO users(…) SELECT … FROM orders` | column-slot mapping and SELECT injection are mutually exclusive |
+| MySQL multi-table JOIN UPDATE | `UPDATE teacher t JOIN teacher_student ts ON … SET …` | outside the statement family, top-level parse fails |
+| Multi-statement text | `SELECT 1; DROP TABLE users` | one call, one statement (top-level semicolon throws) |
+
+Exits: rewrite as a top-level JOIN/WHERE form, or carry the tenant explicitly inside `ignoreTenantLine`.
+
 ### Coverage
 
 The full statement-family matrix (basics / aggregates / joins / subqueries / window functions / CTE / DML / edge cases) plus a multi-rule school-domain suite (teacher / student / teacher-student relation with a non-standard tenant column) is pinned in `tests/tenant-line-matrix.spec.ts` — the README examples above run as code inside the same suite.

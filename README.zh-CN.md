@@ -94,6 +94,30 @@ await runWithTenantLine({ tenantId: '000000', filter: true }, async () => {
 - INSERT 自动补租户列（列清单尾追加 + 每组绑一次会话租户）；已含租户列 → 列位换值。
 - **fail loud 防线**：受控表出现在无法保证过滤的形态（子查询/CTE/派生表/MySQL 多表 JOIN UPDATE）→ 直接抛错，绝不静默跳过（静默=租户泄漏）；出口=改写为顶层形态，或在 `ignoreTenantLine` 内显式携带租户值。
 
+### SQL 注入防线
+
+- **租户值全程参数化**：注入的谓词一律 `列 = ?` + 参数尾绑会话租户——租户值即使是 `'; DROP TABLE users; --` 这样的载荷也只进参数、永不进 SQL 文本（三路径各有用例钉死）。
+- **词法级掩码**：单引号字面量（含 `''` 逃逸）、行注释（`--` 至行尾）、块注释（`/* */`）三态词法扫描——字符串内的分号/伪注释不触发多语句判定；注释内的伪装谓词/占位符不参与定位与换值（执行序号自动跳过）。
+- **多语句 fail loud**：顶层分号直接抛错（一条调用一条语句）。
+- **UNION 防线**：UNION 第二段涉受控表 → fail loud（第二段无法保证注入）；非受控表第二段正常放行（仅第一段注入）。
+- **规则标识符校验**：列名/表名只认标识符形态（可带一级点限定）；敌意配置（含括号/引号/杂符）在包装期抛错；左词边界保证 `tenant_id` 规则不误咬 `f_tenant_id`、`users` 规则不误伤 `users_archive`。
+- 全部防线钉在 `tests/tenant-line-sqli.spec.ts`（16 例）。
+
+### 不支持的形态（fail loud——直接抛错，绝不静默跳过=绝不租户泄漏）
+
+| 形态 | 示例 | 抛错原因 |
+|---|---|---|
+| 子查询涉受控表 | `SELECT * FROM products WHERE price > (SELECT AVG(price) FROM products)` | 深度>0 区域的受控表无法保证过滤 |
+| EXISTS/NOT EXISTS 子查询 | `SELECT * FROM users u WHERE EXISTS (SELECT 1 FROM orders o WHERE …)` | 同上（子查询内 orders 未过滤） |
+| 相关子查询 | `SELECT o.* FROM orders o WHERE o.created_at = (SELECT MAX(o2.created_at) FROM orders o2 WHERE …)` | 同上 |
+| CTE（WITH） | `WITH t AS (SELECT … FROM orders o) SELECT * FROM t WHERE …` | CTE 内层 SELECT 无法注入 |
+| 派生表 | `… FROM (SELECT … FROM orders …) t` | 派生表内层无法注入 |
+| INSERT…SELECT | `INSERT INTO users(…) SELECT … FROM orders` | 列位映射与 SELECT 注入不可兼得 |
+| MySQL 多表 JOIN UPDATE | `UPDATE teacher t JOIN teacher_student ts ON … SET …` | 语句家族外，顶层解析失败 |
+| 多语句文本 | `SELECT 1; DROP TABLE users` | 一条调用一条语句（顶层分号抛错） |
+
+出口：改写为顶层 JOIN/WHERE 形态，或在 `ignoreTenantLine` 内显式携带租户值。
+
 ### 覆盖面
 
 语句族全矩阵（基础/聚合/JOIN/子查询/窗口/CTE/DML/边界）+ 师生域多规则套件（teacher/student/师生关系表含非标准租户列）钉在 `tests/tenant-line-matrix.spec.ts`——本节示例即同套件里真跑的代码。
