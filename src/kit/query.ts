@@ -11,7 +11,7 @@
  * Defaults bake in this plugin family's Ling-style table conventions —
  * id column `f_id`, partition column `f_tenant_id`, and the four-column
  * audit tail — every one overridable per call for tables that deviate.
- * @module dsh-rdb/src/query
+ * @module @ling2/ling-rdb/hub/query
  */
 
 /** Standard audit tail shared by the family's Ling-style tables. */

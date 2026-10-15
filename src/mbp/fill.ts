@@ -7,7 +7,7 @@
  * （与 tenant-line 的 `BasicTenantHolder` 同款语义，宿主在面调用处包
  * `runWithMbpFill`），构造 mapper 时也可注入显式来源（测试/无登录链
  * 部署）。两路都缺席时 operator/tenant 落 NULL——不炸、不猜。
- * @module dsh-rdb/src/mbp/fill
+ * @module @ling2/ling-rdb/hub/mbp/fill
  */
 import { AsyncLocalStorage } from 'node:async_hooks'
 

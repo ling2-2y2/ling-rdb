@@ -1,9 +1,9 @@
 /**
- * Oracle provider 门控集成壳（镜像 dsh-rdb-mysql tests/mysql.spec.ts 五用
+ * Oracle provider 门控集成壳（镜像 mysql provider tests 同款五用
  * 例）：`DSH_ORACLE_URL=oracle://user:pwd@host:port/service` 时真连执行，
  * 缺省整套 skip 不失败。实例到位后首轮即 **PoC 门**（thin 模式 ≥12.1、
  * 事务隐式模型、行键大小写折叠三项一并验证）。
- * @module dsh-rdb-oracle/tests/oracle.spec
+ * @module @ling2/ling-rdb-oracle/tests/oracle.spec
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Context } from '@ling2/ling-cordis'

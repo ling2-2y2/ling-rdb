@@ -1,7 +1,7 @@
 /**
  * 达梦传输层翻译纯单测：connectString 归一（强制 autoCommit=false /
  * 参数保留 / 凭据解码）、`?`→`:n`、`[{val}]` 绑定塑形。
- * @module dsh-rdb-dm/tests/translate.spec
+ * @module @ling2/ling-rdb-dm/tests/translate.spec
  */
 import { describe, expect, it } from 'vitest'
 import { toDmBinds, toDmConnectString, toDmSql } from '../../src/provider-dm/translate.ts'

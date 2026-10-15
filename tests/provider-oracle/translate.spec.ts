@@ -1,7 +1,7 @@
 /**
  * Oracle 传输层翻译纯单测：URL 解析（凭据解码/path 保留 service 名）与
- * `?`→`:n` 编号化（引号感知由 dsh-rdb placeholders 套件覆盖）。
- * @module dsh-rdb-oracle/tests/translate.spec
+ * `?`→`:n` 编号化（引号感知由 placeholders 套件覆盖）。
+ * @module @ling2/ling-rdb-oracle/tests/translate.spec
  */
 import { describe, expect, it } from 'vitest'
 import { parseOracleUrl, toOracleSql } from '../../src/provider-oracle/translate.ts'

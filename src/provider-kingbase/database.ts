@@ -5,13 +5,13 @@
  * 语句自动取还连接），`withConnection`/事务持有独占 client 并以
  * `BEGIN/COMMIT/ROLLBACK` 收口。注意金仓 `sql_compatibility` 模式影响
  * 方言细节——实例 PoC 时确认（README 待办）。
- * @module dsh-rdb-kingbase/src/database
+ * @module @ling2/ling-rdb-kingbase/src/database
  */
 import { Pool, type PoolClient, type PoolConfig, type QueryResult } from 'pg'
-import type { RdbConnection, RdbDatabase, RdbWriteResult } from '../types.ts'
+import type { RdbConnection, RdbDatabase, RdbWriteResult } from '../hub/types.ts'
 import { toKingbaseSql } from './translate.ts'
 
-/** 调试汇（与 dsh-rdb-mysql 的 SqlDebugSink 同契约）。 */
+/** 调试汇（与 mysql provider 的 SqlDebugSink 同契约）。 */
 export type SqlDebugSink = (sql: string, params: readonly unknown[] | undefined, elapsedMs: number) => void
 
 /** 池选项（provider 行 config 解析产物）。 */

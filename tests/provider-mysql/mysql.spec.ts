@@ -4,7 +4,7 @@
  * suite is skipped because no MySQL server ships with the repository. The
  * probe table is dropped before and after each test.
  *
- * @module dsh-rdb-mysql/tests/mysql
+ * @module @ling2/ling-rdb-mysql/tests/mysql
  */
 
 import { Context, type Fiber } from '@ling2/ling-cordis'
@@ -14,7 +14,7 @@ import { apply, type Config } from '../../src/provider-mysql/index.ts'
 
 const url = process.env.DSH_MYSQL_URL
 
-describe.skipIf(url === undefined)('dsh-rdb-mysql (requires DSH_MYSQL_URL)', () => {
+describe.skipIf(url === undefined)('provider-mysql (requires DSH_MYSQL_URL)', () => {
   const dbUrl = url as string
 
   /** Mount the hub plus one provider row; returns the context and the provider fiber. */
@@ -27,7 +27,7 @@ describe.skipIf(url === undefined)('dsh-rdb-mysql (requires DSH_MYSQL_URL)', () 
   }
 
   async function withDatabase<T>(
-    work: (db: import('../../src/types.ts').RdbDatabase) => Promise<T>,
+    work: (db: import('../../src/hub/types.ts').RdbDatabase) => Promise<T>,
   ): Promise<T> {
     const { ctx, fiber } = await mount('probe')
     try {

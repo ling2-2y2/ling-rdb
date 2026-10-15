@@ -3,7 +3,7 @@
  * 记录对象上存 ISO 串，进 SQL 参数前转本地时区 `YYYY-MM-DD HH:MM:SS`
  * （MySQL DATETIME 拒绝带 `T`/`Z` 的 ISO 串）；驱动返回的 Date/串归一为
  * ISO 串。与各消费者私有 toSqlDateTime 同语义，收敛为单源。
- * @module dsh-rdb/src/mbp/datetime
+ * @module @ling2/ling-rdb/hub/mbp/datetime
  */
 
 /** 两位补零。 */

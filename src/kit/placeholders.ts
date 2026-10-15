@@ -4,7 +4,7 @@
  * hub 的传输契约是 mysql 风格的 `?` 位置占位符（{@link RdbConnection}）；
  * 部分 SQL 方言的驱动只认编号占位符（Oracle/达梦 `:1`、PostgreSQL/金仓
  * `$1`）。provider 在把语句递给原生驱动前用本模块翻译——翻译属于传输
- * 层职责，语句层（含 dsh-orm 的方言编译器）统一出口 `?`。
+ * 层职责，语句层（含 orm 的方言编译器）统一出口 `?`。
  *
  * 引号感知：单引号字符串字面量（含 `''` 转义）与双引号标识符（含 `""`
  * 转义）内的 `?` 是字面字符，不翻译。**码元迭代**——与 tenant-line 的
@@ -12,7 +12,7 @@
  * 注释感知（2026-09-17，WeKnora 基线批）：行注释（双减号）与块注释
  * （斜杠星号对）整段透传——迁移 SQL 的文档注释常含 `?` 示例占位符，
  * 误翻会破坏逐字照抄纪律（执行语义无损，文本保真有损）。
- * @module dsh-rdb/src/placeholders
+ * @module @ling2/ling-rdb/hub/placeholders
  */
 
 /** 编号占位符方言族：`oracle` = `:1,:2…`（Oracle/达梦），`postgres` = `$1,$2…`（PostgreSQL/金仓）。 */

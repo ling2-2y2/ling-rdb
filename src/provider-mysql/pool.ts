@@ -2,7 +2,7 @@
  * Pool bootstrap helpers: bounded retry for the first connection a pool
  * establishes. Extracted verbatim from the session-persistence-mysql store,
  * which pioneered these semantics.
- * @module dsh-rdb-mysql/src/pool
+ * @module @ling2/ling-rdb-mysql/src/pool
  */
 
 import type { Pool, PoolConnection } from 'mysql2/promise'

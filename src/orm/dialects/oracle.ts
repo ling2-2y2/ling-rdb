@@ -11,7 +11,7 @@
  *    `LIMIT … OFFSET …`，而 Oracle 族要求 OFFSET 先于 FETCH——插件在
  *    节点层把 `limit` 改写为 `fetch`（基类天然按 offset→fetch 顺序发
  *    射），不触碰编译器内部。
- * @module dsh-orm/src/dialects/oracle
+ * @module @ling2/ling-rdb/orm/dialects/oracle
  */
 import { DefaultQueryCompiler, DialectAdapterBase } from 'kysely'
 // kysely 0.29 起插件接口更名 KyselyPlugin（旧名 Plugin 不再导出）
@@ -19,7 +19,7 @@ import type { DatabaseIntrospector, Dialect, Kysely, KyselyPlugin } from 'kysely
 import type { RootOperationNode, SelectQueryNode } from 'kysely'
 import { RdbKyselyDriver } from '../driver.ts'
 import { unsupportedIntrospector } from './stub.ts'
-import type { RdbDatabase } from '../../types.ts'
+import type { RdbDatabase } from '../../hub/types.ts'
 
 /** Oracle/达梦族编译器：`?` 占位符 + 未引用标识符；分页由节点插件改写为 fetch。 */
 export class OracleFamilyQueryCompiler extends DefaultQueryCompiler {
@@ -45,16 +45,16 @@ export class OracleFamilyQueryCompiler extends DefaultQueryCompiler {
 /**
  * 具象化适配器——基类 DialectAdapterBase 在类型层 abstract（运行时是普通
  * 类），空子类实例走全部默认实现，行为与直连基类一致。迁移锁两桩在本
- * ORM 不可达：建表/迁移走 dsh-rdb migrateRdb 链，kysely migration 组件
+ * ORM 不可达：建表/迁移走 ling-rdb migrateRdb 链，kysely migration 组件
  * 从未装配。
  */
 class OracleFamilyAdapter extends DialectAdapterBase {
   acquireMigrationLock(): Promise<void> {
-    return Promise.reject(new Error('dsh-orm: kysely 迁移锁未支持——建表/迁移走 dsh-rdb migrateRdb 链'))
+    return Promise.reject(new Error('ling-rdb/orm: kysely 迁移锁未支持——建表/迁移走 ling-rdb migrateRdb 链'))
   }
 
   releaseMigrationLock(): Promise<void> {
-    return Promise.reject(new Error('dsh-orm: kysely 迁移锁未支持——建表/迁移走 dsh-rdb migrateRdb 链'))
+    return Promise.reject(new Error('ling-rdb/orm: kysely 迁移锁未支持——建表/迁移走 ling-rdb migrateRdb 链'))
   }
 }
 

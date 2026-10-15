@@ -1,6 +1,6 @@
 /**
  * Typed errors of the relational database hub.
- * @module dsh-rdb/src/error
+ * @module @ling2/ling-rdb/hub/error
  */
 
 /** Machine-readable failure codes of {@link RdbError}. */

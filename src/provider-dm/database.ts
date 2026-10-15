@@ -3,16 +3,16 @@
  * 强制 `autoCommit=false`），事务隐式开启 + `commit()/rollback()` 收口
  * （`beginTransaction()` 为语义占位）。语句入口统一 `?` 占位符，传输层
  * 翻译为 `:n` 并塑形 `[{val}]` 绑定；行返回 `OUT_FORMAT_OBJECT` 键值形态。
- * @module dsh-rdb-dm/src/database
+ * @module @ling2/ling-rdb-dm/src/database
  */
 import * as dmdb from 'dmdb'
-import type { RdbConnection, RdbDatabase, RdbWriteResult } from '../types.ts'
+import type { RdbConnection, RdbDatabase, RdbWriteResult } from '../hub/types.ts'
 import { toDmBinds, toDmSql } from './translate.ts'
 
 /** 每语句执行选项：对象行（键=列名）。autoCommit 已由连接串关闭。 */
 const EXECUTE_OPTIONS = { outFormat: dmdb.OUT_FORMAT_OBJECT } as const
 
-/** 调试汇（与 dsh-rdb-mysql 的 SqlDebugSink 同契约）。 */
+/** 调试汇（与 mysql provider 的 SqlDebugSink 同契约）。 */
 export type SqlDebugSink = (sql: string, params: readonly unknown[] | undefined, elapsedMs: number) => void
 
 /** 池选项（provider 行 config 解析产物）。 */

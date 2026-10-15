@@ -15,7 +15,7 @@
  * 本层自建，语义对位 mysql 缝的 `multipleStatements:false`（数据接口多语句
  * 防护 DI-17 第一道闸仍成立）；语句占位符 `?`→`$n` 翻译复用 `./translate.ts`
  * （调用方执行前过 `toPostgresSql`，引号/注释感知）。
- * @module dsh-rdb-postgres/src/adhoc
+ * @module @ling2/ling-rdb-postgres/src/adhoc
  */
 
 import { Client } from 'pg'

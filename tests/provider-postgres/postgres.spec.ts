@@ -3,12 +3,12 @@
  * host:port/dbname` 时真连执行，缺省整套 skip。首轮即实测门（2026-09-17
  * ParadeDB 17.9 @ 192.168.74.129:5432 已过）：wire 直连性 / `?`→`$n` 翻
  * 译 / 事务 / 一 hub 双库 / 不可达 fail loud。
- * @module dsh-rdb-postgres/tests/postgres.spec
+ * @module @ling2/ling-rdb-postgres/tests/postgres.spec
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@ling2/ling-cordis'
 import { Rdb } from '../../src/index.ts'
-import { migrateRdb } from '../../src/migrate.ts'
+import { migrateRdb } from '../../src/hub/migrate.ts'
 import { apply, Config as RdbPostgresConfig, name, inject } from '../../src/provider-postgres/index.ts'
 import { toPostgresSql } from '../../src/provider-postgres/translate.ts'
 
@@ -26,7 +26,7 @@ describe('toPostgresSql 纯单测', () => {
   })
 })
 
-describe.skipIf(url === undefined)('dsh-rdb-postgres (requires DSH_POSTGRES_URL)', () => {
+describe.skipIf(url === undefined)('provider-postgres (requires DSH_POSTGRES_URL)', () => {
   let ctx: Context
   let provider: any
 
@@ -44,7 +44,7 @@ describe.skipIf(url === undefined)('dsh-rdb-postgres (requires DSH_POSTGRES_URL)
     await provider.dispose()
   })
 
-  it('dialect 归位 postgresql（dsh-orm 分派键）', () => {
+  it('dialect 归位 postgresql（orm 分派键）', () => {
     expect(ctx.rdb.database.get('postgres_it').dialect).toBe('postgresql')
   })
 

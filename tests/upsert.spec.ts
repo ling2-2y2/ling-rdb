@@ -3,7 +3,7 @@
  * dialect.ts 收编上移的黄金断言迁自 store codec.spec 覆盖面）+ 文本适配
  * 的翻译黄金断言（ON DUPLICATE/INSERT IGNORE 两族、VALUES(col)→EXCLUDED、
  * 含引号/括号的更新尾巴、多行语句、 mysql 直通零改动）。纯函数，无服务器。
- * @module dsh-rdb/tests/upsert.spec
+ * @module @ling2/ling-rdb/tests/upsert.spec
  */
 import { describe, expect, it } from 'vitest'
 import {
@@ -20,8 +20,8 @@ import {
   translateMysqlFunctionsToPg,
   translateMysqlUpdateJoinToPg,
   upsertSql,
-} from '../src/upsert.ts'
-import type { RdbDatabase } from '../src/types.ts'
+} from '../src/kit/upsert.ts'
+import type { RdbDatabase } from '../src/hub/types.ts'
 
 describe('结构化 upsertSql 三态渲染', () => {
   const spec = {

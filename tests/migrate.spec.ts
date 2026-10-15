@@ -4,13 +4,13 @@
  * 「假 PG 服务器」模型复现该并发形态，并钉死 advisory lock 键派生、进程
  * 内互斥、异常路径锁释放三项语义；无需真库（真库腿在 provider-postgres
  * 门控套件内）。
- * @module dsh-rdb/tests/migrate
+ * @module @ling2/ling-rdb/tests/migrate
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { RdbError } from '../src/error.ts'
-import { migrateRdb, migrationAdvisoryLockKey, resolveRdbStatements } from '../src/migrate.ts'
-import type { RdbConnection, RdbDatabase, RdbWriteResult } from '../src/types.ts'
+import { RdbError } from '../src/hub/error.ts'
+import { migrateRdb, migrationAdvisoryLockKey, resolveRdbStatements } from '../src/hub/migrate.ts'
+import type { RdbConnection, RdbDatabase, RdbWriteResult } from '../src/hub/types.ts'
 
 beforeEach(() => {
   // 迁移总开关缺省关（is_init_db 行为钉在 registry.spec）；本组专测迁移器，显式开

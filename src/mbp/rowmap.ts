@@ -4,11 +4,11 @@
  * 出行转 ISO 串；json 进参数序列化、出行解析（容忍驱动已解析对象与
  * 文本两种形态）；bool 进参数 true→1/false→0、出行还原布尔。新域不再
  * 手写 `toIso(row.…)` 系列（存量手写不动，§6.3）。
- * @module dsh-rdb/src/mbp/rowmap
+ * @module @ling2/ling-rdb/hub/mbp/rowmap
  */
 import type { MbpColumnSpec, MbpTableDescriptor } from './descriptor.ts'
 import { toIsoDateTime, toSqlDateTime } from './datetime.ts'
-import { stringifyJsonColumn } from '../json-text.ts'
+import { stringifyJsonColumn } from '../kit/json-text.ts'
 export { toIsoDateTime }
 
 /**

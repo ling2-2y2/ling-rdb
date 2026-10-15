@@ -2,7 +2,7 @@
  * 金仓 provider 门控集成壳：`DSH_KINGBASE_URL=postgres://user:pwd@host:
  * port/dbname` 时真连执行，缺省整套 skip。实例到位后首轮即 **PoC 门**
  * （wire 直连性 / `?`→`$n` 翻译 / 事务 / `sql_compatibility` 模式确认）。
- * @module dsh-rdb-kingbase/tests/kingbase.spec
+ * @module @ling2/ling-rdb-kingbase/tests/kingbase.spec
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Context } from '@ling2/ling-cordis'
@@ -19,7 +19,7 @@ describe('toKingbaseSql 纯单测', () => {
   })
 })
 
-describe.skipIf(url === undefined)('dsh-rdb-kingbase (requires DSH_KINGBASE_URL)', () => {
+describe.skipIf(url === undefined)('kingbase provider (requires DSH_KINGBASE_URL)', () => {
   let ctx: Context
   let provider: any
 

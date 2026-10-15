@@ -1,9 +1,9 @@
 /**
- * Oracle provider for the `ctx.rdb` hub（形态镜像 dsh-rdb-mysql）：一行挂
+ * Oracle provider for the `ctx.rdb` hub（形态镜像 mysql provider）：一行挂
  * 一个命名库，apply 内 eager 建池验连（不可达/凭据错误在装载时点拒绝整
  * 行），注册即 effect（先除名后关池）。**无实例时勿挂 cordis.yml 行**。
  * 事务模型为隐式开启（每语句 autoCommit:false，首语句开事务）。
- * @module dsh-rdb-oracle
+ * @module @ling2/ling-rdb-oracle
  */
 
 import type { Context } from '@ling2/ling-cordis'

@@ -1,9 +1,9 @@
 /**
- * 金仓 provider for the `ctx.rdb` hub（形态镜像 dsh-rdb-mysql）：一行挂
+ * 金仓 provider for the `ctx.rdb` hub（形态镜像 mysql provider）：一行挂
  * 一个命名库，eager 建池验连，注册即 effect。**无实例时勿挂 cordis.yml
  * 行**。金仓经 PG wire 协议直连；实例到位后首轮即 PoC 门：
  * `sql_compatibility` 模式确认 + 五用例壳。
- * @module dsh-rdb-kingbase
+ * @module @ling2/ling-rdb-kingbase
  */
 
 import type { Context } from '@ling2/ling-cordis'

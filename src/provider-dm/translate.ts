@@ -1,11 +1,11 @@
 /**
  * 达梦传输层翻译：`?` 位置占位符 → `:1,:2…` 编号占位符（复用
- * dsh-rdb/src/placeholders）、连接 URL 归一为 `dm://` connectString（强制
+ * kit/placeholders）、连接 URL 归一为 `dm://` connectString（强制
  * `autoCommit=false`——事务由门面收口）、参数数组塑形为官方文档的
  * `[{val: x}, …]` 绑定形态。
- * @module dsh-rdb-dm/src/translate
+ * @module @ling2/ling-rdb-dm/src/translate
  */
-import { numberedPlaceholders } from '../placeholders.ts'
+import { numberedPlaceholders } from '../kit/placeholders.ts'
 
 /**
  * `dm://user:password@host:port`（可带 query 参数）→ 达梦 connectString。

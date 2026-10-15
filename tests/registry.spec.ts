@@ -1,14 +1,14 @@
 /**
  * Hub registry and migration-runner tests against an in-memory fake
  * database: no server required.
- * @module dsh-rdb/tests/registry
+ * @module @ling2/ling-rdb/tests/registry
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { RdbError } from '../src/error.ts'
-import { migrateRdb } from '../src/migrate.ts'
-import { RdbDatabaseRegistry } from '../src/registry.ts'
-import type { RdbConnection, RdbDatabase, RdbWriteResult } from '../src/types.ts'
+import { RdbError } from '../src/hub/error.ts'
+import { migrateRdb } from '../src/hub/migrate.ts'
+import { RdbDatabaseRegistry } from '../src/hub/registry.ts'
+import type { RdbConnection, RdbDatabase, RdbWriteResult } from '../src/hub/types.ts'
 
 function fakeDatabase(name: string): RdbDatabase & { log: string[] } {
   const log: string[] = []

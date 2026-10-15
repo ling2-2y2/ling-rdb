@@ -3,15 +3,15 @@
  * 议）。语句入口统一 `?` 占位符，传输层翻译为 `$n`；门面级 query/execute
  * 走池级 `pool.query`（单语句自动取还连接），`withConnection`/事务持有
  * 独占 client 并以 `BEGIN/COMMIT/ROLLBACK` 收口。形态镜像
- * dsh-rdb-kingbase（金仓即 PG wire）——方言名归位 `'postgresql'`（hub
- * 联合类型既有位，dsh-orm 已按它分派 PG 方言编译器）。
- * @module dsh-rdb-postgres/src/database
+ * kingbase provider（金仓即 PG wire）——方言名归位 `'postgresql'`（hub
+ * 联合类型既有位，orm 已按它分派 PG 方言编译器）。
+ * @module @ling2/ling-rdb-postgres/src/database
  */
 import { Pool, type PoolClient, type PoolConfig, type QueryResult } from 'pg'
-import type { RdbConnection, RdbDatabase, RdbWriteResult } from '../types.ts'
+import type { RdbConnection, RdbDatabase, RdbWriteResult } from '../hub/types.ts'
 import { toPostgresParams, toPostgresSql } from './translate.ts'
 
-/** 调试汇（与 dsh-rdb-mysql 的 SqlDebugSink 同契约）。 */
+/** 调试汇（与 mysql provider 的 SqlDebugSink 同契约）。 */
 export type SqlDebugSink = (sql: string, params: readonly unknown[] | undefined, elapsedMs: number) => void
 
 /** 池选项（provider 行 config 解析产物）。 */

@@ -3,7 +3,7 @@
  * shape, one database shape, and the normalization rules every provider
  * honors. SQL text itself stays consumer-owned — the hub standardizes
  * transport (placeholders, transactions, pooling), not query language.
- * @module dsh-rdb/src/types
+ * @module @ling2/ling-rdb/hub/types
  */
 
 /**

@@ -1,10 +1,22 @@
 /**
  * Named database registry of the relational database hub.
- * @module dsh-rdb/src/registry
+ * @module @ling2/ling-rdb/hub/registry
  */
 
 import type { RdbDatabase } from './types.ts'
 import { RdbError } from './error.ts'
+
+/**
+ * Derive the Cordis lifecycle service that one named database provider row
+ * supplies. Consumers inject these keys so activation cannot race provider
+ * registration even though callers continue resolving databases through the
+ * hub registry.
+ * @param name - Database registry name, e.g. `sessions`.
+ * @returns the corresponding lifecycle-only service key.
+ */
+export function rdbDatabaseServiceKey(name: string): string {
+  return `rdb.database.${name}`
+}
 
 /**
  * Mutable name → database table. Multiple databases stay mounted side by

@@ -2,13 +2,13 @@
  * mbp 语义层单测（方案 C P0 验收面）：语句派生黄金断言（假执行面捕获
  * SQL/参数）、强制填充回归（审计列必填——mapper 写路径无法跳过盖戳）、
  * 逻辑删/硬删分型、行映射三态转换、分页双查谓词序、Wrapper 类型化构造。
- * @module dsh-rdb/tests/mbp
+ * @module @ling2/ling-rdb/tests/mbp
  */
 import { describe, expect, it } from 'vitest'
 import { BaseMapper, MbpFillHolder, decodeRowWith, defineTable, mbpWrapper, patchFromInput, runWithMbpFill } from '../src/mbp/index.ts'
 import type { MbpExecutor, MbpTableDescriptor } from '../src/mbp/index.ts'
 import { toIsoDateTime, toSqlDateTime } from '../src/mbp/index.ts'
-import type { RdbWriteResult } from '../src/types.ts'
+import type { RdbWriteResult } from '../src/hub/types.ts'
 
 /** 捕获型假执行面：记语句与参数，query 回放预置行。 */
 class FakeExec implements MbpExecutor {
@@ -108,7 +108,7 @@ describe('BaseMapper.insert', () => {
   })
 
   it('entity carrying a non-empty id keeps it (MP 语义：generator 只在缺席时生效)', async () => {
-    // 2026-09-05 批C 钉子：dsh-admin action 域 `update({id:'x'})` 落插分支时
+    // 消费方 action 域钉子： `update({id:'x'})` 落插分支时
     // 回读必须命中传入 id——saveOrUpdate 的 unknown-id 插入保留调用方 id。
     const exec = new FakeExec()
     const record = await makeMapper(DEMO, exec).insert({ id: 'manual-9', fullName: '带 id' }) as Record<string, unknown>

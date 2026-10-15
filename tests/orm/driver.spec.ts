@@ -2,11 +2,11 @@
  * RdbKyselyDriver 单测（无服务器）：租约生命周期映射（acquire→
  * withConnection 占住 / release→归还）、executeQuery 参数透传、写返回
  * 三族形态归一化（OkPacket/rowsAffected/rowCount）、事务原语落点、
- * 非租约连接 fail loud。fake 复用 dsh-rdb registry.spec 的手写范式。
- * @module dsh-orm/tests/driver.spec
+ * 非租约连接 fail loud。fake 复用 registry.spec 的手写范式。
+ * @module @ling2/ling-rdb/tests/orm/driver.spec
  */
 import { describe, expect, it } from 'vitest'
-import type { RdbConnection, RdbDatabase, RdbWriteResult } from '../../src/types.ts'
+import type { RdbConnection, RdbDatabase, RdbWriteResult } from '../../src/hub/types.ts'
 import { RdbKyselyBoundDriver, RdbKyselyConnection, RdbKyselyDriver } from '../../src/orm/driver.ts'
 
 /** 录制型 fake：withConnection 的 work 完成时刻 = 租约归还时刻。 */

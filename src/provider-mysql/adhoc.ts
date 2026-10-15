@@ -9,7 +9,7 @@
  *
  * 安全默认：**不开 `multipleStatements`**（对位 Ling PreparedStatement 单语句
  * 语义——数据接口多语句防护 DI-17 的第一道闸在驱动层就成立）。
- * @module dsh-rdb-mysql/src/adhoc
+ * @module @ling2/ling-rdb-mysql/src/adhoc
  */
 
 import { createConnection, type Connection } from 'mysql2/promise'

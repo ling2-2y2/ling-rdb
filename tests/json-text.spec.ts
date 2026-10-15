@@ -5,10 +5,10 @@
  * 列另拒收 NUL 裸字符。钉子覆盖：字符串净化三类替换与有效代理对保真、
  * JSON 列序列化出口零漂移与深净化、PG provider 绑参兜底、mbp json 列编码
  * 出口。纯函数，无服务器。
- * @module dsh-rdb/tests/json-text.spec
+ * @module @ling2/ling-rdb/tests/json-text.spec
  */
 import { describe, expect, it } from 'vitest'
-import { sanitizeStorableText, stringifyJsonColumn } from '../src/json-text.ts'
+import { sanitizeStorableText, stringifyJsonColumn } from '../src/kit/json-text.ts'
 import { toPostgresParams } from '../src/provider-postgres/translate.ts'
 import { encodeValue } from '../src/mbp/rowmap.ts'
 import type { MbpColumnSpec } from '../src/mbp/descriptor.ts'

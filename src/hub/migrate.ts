@@ -2,7 +2,7 @@
  * Ordered DDL migrations over an {@link RdbDatabase}. The runner records
  * applied versions in one bookkeeping table per consumer schema; it never
  * generates SQL — statement text stays owned by the consumer package.
- * @module dsh-rdb/src/migrate
+ * @module @ling2/ling-rdb/hub/migrate
  */
 
 import type { RdbConnection, RdbDatabase, RdbDialectName } from './types.ts'

@@ -1,8 +1,8 @@
 /**
  * Golden-text tests of the statement kit: every expected SQL string is
- * copied verbatim from the hand-written dsh-admin statements the kit
+ * copied verbatim from the hand-written admin statements the kit
  * replaces, proving the builder reproduces them byte-for-byte.
- * @module dsh-rdb/tests/query.spec
+ * @module @ling2/ling-rdb/tests/query.spec
  */
 
 import { describe, expect, it } from 'vitest'
@@ -12,11 +12,11 @@ import {
   inFragment,
   rdbTableColumns,
   rdbTableStatements,
-} from '../src/query.ts'
+} from '../src/kit/query.ts'
 
 describe('rdbTableColumns', () => {
   it('assembles the canonical Ling order (group shape)', () => {
-    // GROUP_COLUMNS verbatim (dsh-admin/src/group/statements.ts).
+    // GROUP_COLUMNS verbatim (admin group statements).
     expect(rdbTableColumns({
       data: ['f_full_name', 'f_en_code', 'f_description', 'f_enabled_mark', 'f_sort_code'],
     })).toEqual([

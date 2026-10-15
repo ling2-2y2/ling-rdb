@@ -1,16 +1,16 @@
 /**
- * dsh-orm——Kysely 语句构造层跑在 dsh-rdb hub 上（纯库，无 cordis 行）。
+ * orm 语句构造层——Kysely 语句构造层跑在 rdb hub 上（纯库，无 cordis 行）。
  *
  * 消费形态：`kyselyFor(database)` 按 `database.dialect` 分派出 Kysely
  * 实例；全部 SQL 经 RdbDatabase 门面执行（池/事务/debug sink/租户包装
  * 零旁路）。Oracle/达梦族自动附带分页改写插件（limit→fetch）。
  *
  * 版本纪律：kysely 0.x semver，**exact pin 0.29.5**，升级走专门批次。
- * @module dsh-orm
+ * @module @ling2/ling-rdb/orm
  */
 import { Kysely, DynamicModule } from 'kysely'
 import type { Dialect } from 'kysely'
-import type { RdbConnection, RdbDatabase } from '../types.ts'
+import type { RdbConnection, RdbDatabase } from '../hub/types.ts'
 import { mysqlRdbDialect } from './dialects/mysql.ts'
 import { kingbaseRdbDialect } from './dialects/kingbase.ts'
 import { OracleFamilyPlugin, oracleFamilyRdbDialect } from './dialects/oracle.ts'
@@ -47,7 +47,7 @@ export const dynamic = new DynamicModule()
 export function kyselyFor<DB = any>(database: RdbDatabase, connection?: RdbConnection): Kysely<DB> {
   // 未支持方言统一抛错形态（compile.spec 回归钉钉住含 database 名的全文）
   const unsupportedDialect = (dialect: unknown, name: string): Error =>
-    new Error(`dsh-orm: 不支持的方言 '${String(dialect)}'（database '${name}'）——支持清单：mysql / kingbase / postgresql / oracle / dm`)
+    new Error(`ling-rdb/orm: 不支持的方言 '${String(dialect)}'（database '${name}'）——支持清单：mysql / kingbase / postgresql / oracle / dm`)
   const bind = (dialect: Dialect): Dialect => connection === undefined
     ? dialect
     : { ...dialect, createDriver: () => new RdbKyselyBoundDriver(connection) }

@@ -1,10 +1,10 @@
 /**
  * Oracle 传输层翻译：`?` 位置占位符 → `:1,:2…` 编号占位符（复用
- * dsh-rdb/src/placeholders），并把连接 URL 归一为 oracledb 的
- * connectString 形态。语句层（含 dsh-orm）统一出口 `?`。
- * @module dsh-rdb-oracle/src/translate
+ * kit/placeholders），并把连接 URL 归一为 oracledb 的
+ * connectString 形态。语句层（含 orm 语句构造层）统一出口 `?`。
+ * @module @ling2/ling-rdb-oracle/src/translate
  */
-import { numberedPlaceholders } from '../placeholders.ts'
+import { numberedPlaceholders } from '../kit/placeholders.ts'
 
 /**
  * `oracle://user:password@host:port/service` → oracledb connectString

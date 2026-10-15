@@ -7,7 +7,7 @@
  * {@link stringifyJsonColumn}（先深净化再 stringify）；PG provider 绑参层
  * 另用 {@link sanitizeStorableText} 为纯文本参数兜底。两类不可表示字符统一
  * 替换为 U+FFFD（REPLACEMENT CHARACTER），有效代理对（emoji 等）逐字节保留。
- * @module dsh-rdb/src/json-text
+ * @module @ling2/ling-rdb/hub/json-text
  */
 
 /** 快速探测：是否含 NUL 或任意 UTF-16 代理项码元（成对与否由净化函数判定）。 */

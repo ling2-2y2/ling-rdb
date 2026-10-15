@@ -1,11 +1,11 @@
 /**
- * PostgreSQL provider for the `ctx.rdb` hub（形态镜像 dsh-rdb-kingbase/
- * dsh-rdb-mysql）：一行挂一个命名库，eager 建池验连，注册即 effect。
+ * PostgreSQL provider for the `ctx.rdb` hub（形态镜像 kingbase provider/
+ * mysql provider）：一行挂一个命名库，eager 建池验连，注册即 effect。
  * **实例缺席时勿挂 cordis.yml 行**（eager open 拒启动，与 oracle/dm/
- * kingbase 门控壳同一纪律）。首个消费方 = dsh-aip weknora 复刻子系统
+ * kingbase 门控壳同一纪律）。首个消费方 = aip 域 weknora 复刻子系统
  * （库 `dsh_weknora`，ParadeDB 发行版实例——pg_search/pgvector/pg_trgm/
  * uuid-ossp 扩展齐备，weknora V1 基线 DDL 依赖它们）。
- * @module dsh-rdb-postgres
+ * @module @ling2/ling-rdb-postgres
  */
 
 import type { Context } from '@ling2/ling-cordis'

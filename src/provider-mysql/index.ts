@@ -5,7 +5,7 @@
  * on one server. The provider opens eagerly inside `apply`, so an
  * unreachable server or refused credentials fail the row at load instead of
  * the first query.
- * @module dsh-rdb-mysql
+ * @module @ling2/ling-rdb-mysql
  */
 
 import type { Context } from '@ling2/ling-cordis'

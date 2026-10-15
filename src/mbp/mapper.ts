@@ -11,7 +11,7 @@
  * 记录侧元字段固定命名（Ling 域记录惯例）：`id` / `tenantId` /
  * `creatorTime` / `creatorUserId` / `lastModifyTime` / `lastModifyUserId` /
  * `deleteMark`；数据字段名由描述符 columns 键给定。
- * @module dsh-rdb/src/mbp/mapper
+ * @module @ling2/ling-rdb/hub/mbp/mapper
  */
 import { randomUUID } from 'node:crypto'
 import type { MbpTableDescriptor } from './descriptor.ts'
@@ -20,9 +20,9 @@ import { decodeRowWith, decodeValue, encodeValue } from './rowmap.ts'
 import { toSqlDateTime } from './datetime.ts'
 import type { MbpFillSource, MbpFillValues } from './fill.ts'
 import { alsFillSource, NULL_FILL } from './fill.ts'
-import type { RdbListCondition, RdbListQuery } from '../query.ts'
-import { buildRdbListQuery, inFragment } from '../query.ts'
-import type { RdbWriteResult } from '../types.ts'
+import type { RdbListCondition, RdbListQuery } from '../kit/query.ts'
+import { buildRdbListQuery, inFragment } from '../kit/query.ts'
+import type { RdbWriteResult } from '../hub/types.ts'
 
 /** id 生成器注入点（裁定②：默认 randomUUID 保现状语义；切 Ling Snowflake 时换实现）。 */
 export type IdentifierGenerator = () => string
@@ -118,7 +118,7 @@ export class BaseMapper<T extends object> {
    * 家族惯例落 NULL——对齐 Ling insertFill 只填 creator 的语义）。id 位
    * 沿用 MyBatis-Plus 语义：**entity 携带非空 id 时用之（saveOrUpdate 的
    * unknown-id 插入分支保留调用方 id），缺席才走 IdentifierGenerator**
-   * （2026-09-05 批C：dsh-admin action 域 `update({id:'x'})` 落插分支时
+   * （消费方 action 域 `update({id:'x'})` 落插分支时
    * 回读必须命中传入 id）。
    * @param entity - 数据字段（缺省字段落 NULL）。
    * @returns 完整记录（含 id 与元字段，ISO 时间串）。

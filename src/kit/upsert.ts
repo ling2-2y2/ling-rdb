@@ -24,10 +24,10 @@
  * 字面量；文本适配不改写绑参/字面量本体（除 `VALUES(col)` 引用形），语句
  * 里出现用户输入仍由调用方走绑参——本模块产物是语句常量的构件，绝不拼接
  * 用户输入。
- * @module dsh-rdb/src/upsert
+ * @module @ling2/ling-rdb/hub/upsert
  */
-import type { RdbDatabase } from './types.ts'
-import type { RdbDialectName } from './types.ts'
+import type { RdbDatabase } from '../hub/types.ts'
+import type { RdbDialectName } from '../hub/types.ts'
 
 // ────────────────────────── ① 结构化 spec ──────────────────────────
 
@@ -66,7 +66,7 @@ export interface InsertIgnoreSpec {
 function assertSupportedDialect(dialect: RdbDialectName): void {
   if (dialect !== 'mysql' && dialect !== 'postgresql' && dialect !== 'kingbase' && dialect !== 'oracle' && dialect !== 'dm') {
     throw new Error(
-      `dsh-rdb/upsert: 不支持的方言 '${dialect}'——支持清单：mysql / postgresql / kingbase / oracle / dm`
+      `ling-rdb/kit/upsert: 不支持的方言 '${dialect}'——支持清单：mysql / postgresql / kingbase / oracle / dm`
       + '（sqlite 无 upsert 等价形态）',
     )
   }
@@ -187,11 +187,11 @@ export function translateMysqlUpdateJoinToPg(text: string): string {
     else if (ch === ')') depth -= 1
     if (depth === 0 && ch === ')') break
   }
-  if (depth !== 0) throw new Error('dsh-rdb/upsert: UPDATE JOIN 子查询括号不配平')
+  if (depth !== 0) throw new Error('ling-rdb/kit/upsert: UPDATE JOIN 子查询括号不配平')
   const subquery = text.slice(parenAt, i + 1)
   const rest = text.slice(i + 1)
   const tail = /\s*(\w+)\s+ON\s+([\s\S]+?)\s+SET\s+([\s\S]+)$/i.exec(rest)
-  if (tail === null) throw new Error(`dsh-rdb/upsert: UPDATE JOIN 尾部须为 "ON <条件> SET <赋值>" 形态：${rest.slice(0, 120)}`)
+  if (tail === null) throw new Error(`ling-rdb/kit/upsert: UPDATE JOIN 尾部须为 "ON <条件> SET <赋值>" 形态：${rest.slice(0, 120)}`)
   const joinAlias = tail[1]!
   // 剥掉语句尾分号再重组（否则分号截断 SET 与 FROM），末尾统一补回
   const hadSemicolon = /;\s*$/.test(tail[3]!)
@@ -279,7 +279,7 @@ export function translateMysqlBoolLiteralsToPg(text: string): string {
 export function extractUpsertTable(sql: string): string {
   const match = /INSERT\s+(?:IGNORE\s+)?INTO\s+`?([A-Za-z_][A-Za-z0-9_]*)`?/i.exec(sql)
   if (match === null) {
-    throw new Error(`dsh-rdb/upsert: 无法从语句提取目标表名——语句头形如 INSERT [IGNORE] INTO <表>：${sql.slice(0, 120)}`)
+    throw new Error(`ling-rdb/kit/upsert: 无法从语句提取目标表名——语句头形如 INSERT [IGNORE] INTO <表>：${sql.slice(0, 120)}`)
   }
   return match[1]!
 }
@@ -413,7 +413,7 @@ function findCall(text: string, start: number, name: string): { args: string; en
       } else if (ch === '(') depth += 1
       else if (ch === ')') depth -= 1
     }
-    if (depth !== 0) throw new Error(`dsh-rdb/upsert: ${name}(...) 括号不配平：${text.slice(m.index, m.index + 120)}`)
+    if (depth !== 0) throw new Error(`ling-rdb/kit/upsert: ${name}(...) 括号不配平：${text.slice(m.index, m.index + 120)}`)
     return { args: text.slice(argStart, i - 1), end: i }
   }
   return null
@@ -508,13 +508,13 @@ function replaceFirstFamily(text: string): string | null {
       if (name === 'IFNULL') {
         replacement = `COALESCE(${args.join(', ')})`
       } else if (name === 'INSTR') {
-        if (args.length !== 2) throw new Error(`dsh-rdb/upsert: INSTR 需要 2 个实参：${text.slice(m.index, m.index + 120)}`)
+        if (args.length !== 2) throw new Error(`ling-rdb/kit/upsert: INSTR 需要 2 个实参：${text.slice(m.index, m.index + 120)}`)
         replacement = `POSITION(${args[1]} IN ${args[0]})`
       } else {
         // DATE_ADD / DATE_SUB：MySQL 形态 (expr, INTERVAL v UNIT) → PG (expr ± INTERVAL 'v UNIT')
-        if (args.length !== 2) throw new Error(`dsh-rdb/upsert: ${name} 需要 2 个实参：${text.slice(m.index, m.index + 120)}`)
+        if (args.length !== 2) throw new Error(`ling-rdb/kit/upsert: ${name} 需要 2 个实参：${text.slice(m.index, m.index + 120)}`)
         const interval = /^INTERVAL\s+(.+)$/is.exec(args[1]!)
-        if (interval === null) throw new Error(`dsh-rdb/upsert: ${name} 第二实参须为 INTERVAL v UNIT 形态：${args[1]!.slice(0, 80)}`)
+        if (interval === null) throw new Error(`ling-rdb/kit/upsert: ${name} 第二实参须为 INTERVAL v UNIT 形态：${args[1]!.slice(0, 80)}`)
         const op = name === 'DATE_ADD' ? '+' : '-'
         replacement = `(${args[0]} ${op} INTERVAL '${interval[1]!.trim()}')`
       }
@@ -554,7 +554,7 @@ export function renderPgUpsertText(sql: string, conflictKeys: readonly string[])
       + sql.slice(ignoreMatch.index + ignoreMatch[0].length)
     return `${head.trimEnd()}\nON CONFLICT (${conflictKeys.join(', ')}) DO NOTHING`
   }
-  throw new Error(`dsh-rdb/upsert: 语句不含可翻译的 MySQL upsert 写法：${sql.slice(0, 120)}`)
+  throw new Error(`ling-rdb/kit/upsert: 语句不含可翻译的 MySQL upsert 写法：${sql.slice(0, 120)}`)
 }
 
 /** 主键内省缓存（进程级；键 = `<库名>.<表名>`——schema 迁移后进程内稳定）。 */
@@ -581,7 +581,7 @@ export async function pgPrimaryKeyColumns(db: RdbDatabase, table: string): Promi
   const columns = rows.map(row => row.col)
   if (columns.length === 0) {
     throw new Error(
-      `dsh-rdb/upsert: 表 '${table}'（库 '${db.name}'）无主键——ON DUPLICATE 语义无法内省冲突锚，`
+      `ling-rdb/kit/upsert: 表 '${table}'（库 '${db.name}'）无主键——ON DUPLICATE 语义无法内省冲突锚，`
       + '请在调用方显式传 conflictKeys 或改用结构化 upsertSql 入口',
     )
   }
@@ -603,11 +603,11 @@ export async function adaptUpsertText(db: RdbDatabase, sql: string, conflictKeys
   if (!hasMysqlUpsertText(sql) && !hasMysqlFunctionText(sql) && !hasMysqlBoolLiteral(sql)
     && !hasMysqlFromDual(sql) && !/\\'/i.test(sql)) return sql
   if (/REPLACE\s+INTO/i.test(sql)) {
-    throw new Error('dsh-rdb/upsert: REPLACE INTO 语义（删旧插新）无文本级等价翻译，请改写为显式 DELETE+INSERT 或结构化入口')
+    throw new Error('ling-rdb/kit/upsert: REPLACE INTO 语义（删旧插新）无文本级等价翻译，请改写为显式 DELETE+INSERT 或结构化入口')
   }
   if (db.dialect !== 'postgresql' && db.dialect !== 'kingbase') {
     throw new Error(
-      `dsh-rdb/upsert: 方言 '${db.dialect}' 暂无文本适配（当前支持 mysql 直通 / postgresql / kingbase）——`
+      `ling-rdb/kit/upsert: 方言 '${db.dialect}' 暂无文本适配（当前支持 mysql 直通 / postgresql / kingbase）——`
       + 'Oracle/达梦请改用结构化 upsertSql（MERGE 渲染）',
     )
   }

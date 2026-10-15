@@ -1,10 +1,10 @@
 /**
- * dsh-rdb 租户行拦截（tenant-line）单测：上下文作用域语义
+ * 租户行拦截（tenant-line）单测：上下文作用域语义
  * （传播/并发隔离/嵌套/豁免）、参数改写器对语句家族各形态的命中与
  * 排除、以及包装外观在 query/execute/事务内连接上的行为。
  */
 import { describe, expect, it } from 'vitest'
-import type { RdbConnection, RdbDatabase } from '../src/types.ts'
+import type { RdbConnection, RdbDatabase } from '../src/hub/types.ts'
 import {
   currentTenantLine,
   ignoreTenantLine,
@@ -13,7 +13,7 @@ import {
   runWithTenantLine,
   wrapTenantLineDatabase,
   type TenantLineRule,
-} from '../src/tenant-line.ts'
+} from '../src/kit/tenant-line.ts'
 
 /** The rbac statement family's rule: one column, a controlled table set. */
 const RULE: TenantLineRule = {

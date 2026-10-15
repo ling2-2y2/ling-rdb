@@ -6,11 +6,11 @@
  *
  * `undefined` 值的条件自动跳过（`eq('enCode', undefined)` = 不加条件），
  * 链式调用可全量罗列无须守卫——对齐 Ling Wrapper 的「传了才生效」语义。
- * @module dsh-rdb/src/mbp/wrapper
+ * @module @ling2/ling-rdb/hub/mbp/wrapper
  */
 import type { MbpTableDescriptor } from './descriptor.ts'
 import { columnOf } from './descriptor.ts'
-import type { RdbListCondition } from '../query.ts'
+import type { RdbListCondition } from '../kit/query.ts'
 
 
 /** mbp 旗标列布尔参数归一：JS true/false → 1/0（mbp 列全为数值旗标，

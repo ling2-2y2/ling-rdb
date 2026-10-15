@@ -1,9 +1,9 @@
 /**
- * 达梦 provider for the `ctx.rdb` hub（形态镜像 dsh-rdb-mysql）：一行挂
+ * 达梦 provider for the `ctx.rdb` hub（形态镜像 mysql provider）：一行挂
  * 一个命名库，eager 建池验连，注册即 effect。**无实例时勿挂 cordis.yml
  * 行**。dmdb 生态薄（官方方言只到 TypeORM/Knex），实例到位后首轮即
  * PoC 门：池行为 / `[{val}]` 绑定 / 事务模型 / 列名大小写折叠。
- * @module dsh-rdb-dm
+ * @module @ling2/ling-rdb-dm
  */
 
 import type { Context } from '@ling2/ling-cordis'

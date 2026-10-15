@@ -3,7 +3,7 @@
  * 执行，缺省整套 skip。实例到位后首轮即 **PoC 门**（dmdb 池行为 /
  * `[{val}]` 绑定 / 事务隐式模型 / 列名大小写——达夌默认未引用 DDL 折
  * 大写，探针查询按驱动 `columnNameCase` 实测后校准断言键名）。
- * @module dsh-rdb-dm/tests/dm.spec
+ * @module @ling2/ling-rdb-dm/tests/dm.spec
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Context } from '@ling2/ling-cordis'

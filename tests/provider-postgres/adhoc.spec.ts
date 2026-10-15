@@ -3,7 +3,7 @@
  * 连接串拼装与不可达快失败；`DSH_POSTGRES_URL=postgres://user:pwd@host:
  * port/dbname` 在场时真连执行（探针表建删 / `?`→`$n` 翻译 / 扩展协议多语句
  * 拒绝 / currentSchema 落位），缺省整套 skip（既有门控先例同款）。
- * @module dsh-rdb-postgres/tests/adhoc
+ * @module @ling2/ling-rdb-postgres/tests/adhoc
  */
 import { describe, expect, it } from 'vitest'
 import { buildAdhocPostgresUrl, withAdhocPostgres } from '../../src/provider-postgres/adhoc.ts'

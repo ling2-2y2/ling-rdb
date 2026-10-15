@@ -4,10 +4,10 @@
  * 符；占位符全族统一 `?`（编号翻译归 provider）；Oracle/DM 分页为
  * OFFSET…FETCH 形态（limit→fetch 节点改写），金仓/PG 为 LIMIT…OFFSET。
  * fake database 只借 dialect 字段做分派，compile() 不触驱动。
- * @module dsh-orm/tests/compile.spec
+ * @module @ling2/ling-rdb/tests/orm/compile.spec
  */
 import { describe, expect, it } from 'vitest'
-import type { RdbDatabase } from '../../src/types.ts'
+import type { RdbDatabase } from '../../src/hub/types.ts'
 import { kyselyFor } from '../../src/orm/index.ts'
 
 interface DemoDb {

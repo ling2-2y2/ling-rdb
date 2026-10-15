@@ -2,10 +2,10 @@
  * 占位符序号化的黄金断言：Oracle/达梦族（`:1`）与 PostgreSQL/金仓族
  * （`$1`）两种出口、引号感知（字面量与标识符内的 `?` 不翻译）、无占位
  * 符时原引用返回。全部纯函数，无服务器。
- * @module dsh-rdb/tests/placeholders.spec
+ * @module @ling2/ling-rdb/tests/placeholders.spec
  */
 import { describe, expect, it } from 'vitest'
-import { numberedPlaceholders } from '../src/placeholders.ts'
+import { numberedPlaceholders } from '../src/kit/placeholders.ts'
 
 describe('numberedPlaceholders', () => {
   it('Oracle 族把 ? 序号化为 :1/:2/…', () => {

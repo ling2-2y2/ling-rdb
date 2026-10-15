@@ -1,6 +1,6 @@
 /**
  * 未支持能力的 fail-loud 占位（introspection 本轮出范围）。
- * @module dsh-orm/src/dialects/stub
+ * @module @ling2/ling-rdb/orm/dialects/stub
  */
 import type { DatabaseIntrospector } from 'kysely'
 
@@ -11,7 +11,7 @@ import type { DatabaseIntrospector } from 'kysely'
  * @returns 抛错实现的 DatabaseIntrospector。
  */
 export function unsupportedIntrospector(family: string): DatabaseIntrospector {
-  const message = `dsh-orm: ${family} 方言暂不支持数据库内省（introspection）——本轮范围是语句构造与执行，表/列元数据发现待后续批次`
+  const message = `ling-rdb/orm: ${family} 方言暂不支持数据库内省（introspection）——本轮范围是语句构造与执行，表/列元数据发现待后续批次`
   return {
     async getSchemas() {
       throw new Error(message)

@@ -2,11 +2,11 @@
  * MySQL implementation of the {@link RdbDatabase} facade: one lazy-opened
  * mysql2 pool per provider row, connection-scoped transactions with rollback
  * aggregation, and normalized write results.
- * @module dsh-rdb-mysql/src/database
+ * @module @ling2/ling-rdb-mysql/src/database
  */
 
 import { createPool, type Pool, type PoolConnection, type ResultSetHeader } from 'mysql2/promise'
-import type { RdbConnection, RdbDatabase, RdbWriteResult } from '../types.ts'
+import type { RdbConnection, RdbDatabase, RdbWriteResult } from '../hub/types.ts'
 import { connectWithRetry } from './pool.ts'
 
 /**

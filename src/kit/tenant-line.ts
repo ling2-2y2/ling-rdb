@@ -9,10 +9,10 @@
  * 对应物）需要把谓词从语句里**中和掉**（跨分区读写），此时对命中的
  * 谓词做最小文本改写（`列 = ?` → `1 = 1`）。方言无关：任何
  * `RdbDatabase` 形状（含测试假外观）都能包；provider 无需参与。
- * @module dsh-rdb/src/tenant-line
+ * @module @ling2/ling-rdb/hub/tenant-line
  */
 import { AsyncLocalStorage } from 'node:async_hooks'
-import type { RdbConnection, RdbDatabase } from './types.ts'
+import type { RdbConnection, RdbDatabase } from '../hub/types.ts'
 
 /** 一条租户行规则（业务侧知识：列名 + 受控表清单）。 */
 export interface TenantLineRule {

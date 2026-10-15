@@ -1,11 +1,11 @@
 /**
  * PostgreSQL 传输层翻译：`?` 位置占位符 → `$1,$2…` 编号占位符（复用
- * dsh-rdb/src/placeholders）。PG 原生 wire 协议，连接串 `postgres://`
+ * kit/placeholders）。PG 原生 wire 协议，连接串 `postgres://`
  * 形态 pg 驱动原生可读，无需归一。
- * @module dsh-rdb-postgres/src/translate
+ * @module @ling2/ling-rdb-postgres/src/translate
  */
-import { numberedPlaceholders } from '../placeholders.ts'
-import { sanitizeStorableText } from '../json-text.ts'
+import { numberedPlaceholders } from '../kit/placeholders.ts'
+import { sanitizeStorableText } from '../kit/json-text.ts'
 
 /**
  * 翻译语句占位符为 PG 编号形态。

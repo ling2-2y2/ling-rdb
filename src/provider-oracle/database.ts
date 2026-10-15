@@ -4,10 +4,10 @@
  * **隐式开启**：每条 execute 显式 `autoCommit:false`，首个语句即开启事
  * 务，`commit()/rollback()` 收口（`beginTransaction()` 为语义占位）。
  * 语句入口统一 `?` 占位符，传输层翻译为 `:n`。
- * @module dsh-rdb-oracle/src/database
+ * @module @ling2/ling-rdb-oracle/src/database
  */
 import oracledb, { type Pool, type Connection } from 'oracledb'
-import type { RdbConnection, RdbDatabase, RdbWriteResult } from '../types.ts'
+import type { RdbConnection, RdbDatabase, RdbWriteResult } from '../hub/types.ts'
 import { toOracleSql } from './translate.ts'
 
 /** 每语句执行选项：对象行 + 关闭自动提交（事务由门面收口）。 */
@@ -16,7 +16,7 @@ const EXECUTE_OPTIONS: oracledb.ExecuteOptions = {
   autoCommit: false,
 }
 
-/** 调试汇（与 dsh-rdb-mysql 的 SqlDebugSink 同契约）。 */
+/** 调试汇（与 mysql provider 的 SqlDebugSink 同契约）。 */
 export type SqlDebugSink = (sql: string, params: readonly unknown[] | undefined, elapsedMs: number) => void
 
 /** 池选项（provider 行 config 解析产物）。 */
@@ -45,7 +45,7 @@ class OracleRdbConnection implements RdbConnection {
     const start = Date.now()
     try {
       const result = await this.conn.execute(toOracleSql(sql), (params ?? []) as oracledb.BindParameters, EXECUTE_OPTIONS)
-      // 写路径：rows 缺省，返回带 rowsAffected 的形态（dsh-orm 归一化消费）
+      // 写路径：rows 缺省，返回带 rowsAffected 的形态（orm 归一化消费）
       if (Array.isArray(result.rows)) return result.rows as readonly T[]
       return { rows: [], rowsAffected: result.rowsAffected } as unknown as readonly T[]
     } finally {

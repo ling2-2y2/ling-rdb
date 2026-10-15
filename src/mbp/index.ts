@@ -1,9 +1,9 @@
 /**
- * mbp——dsh-rdb 内建的 MyBatis-Plus 语义层（方案 C，`src/query.ts` 语句
+ * mbp——ling-rdb 内建的 MyBatis-Plus 语义层（方案 C，`src/query.ts` 语句
  * kit 路线的延长）：表描述符 → BaseMapper 派生 CRUD → 强制自动填充 →
  * 行映射自动化 → Wrapper 类型化条件。全部纯函数/纯派生，零 IO、零新依赖，
  * SQL 仍是内联可审计的 `?` 占位符文本，流量全经 RdbDatabase 门面。
- * @module dsh-rdb/src/mbp
+ * @module @ling2/ling-rdb/hub/mbp
  */
 export { defineTable, columnOf } from './descriptor.ts'
 export type { MbpColumnType, MbpColumnSpec, MbpTableSpec, MbpTableDescriptor } from './descriptor.ts'

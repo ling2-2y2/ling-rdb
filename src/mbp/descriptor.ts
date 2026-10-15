@@ -9,10 +9,10 @@
  * 列定义顺序即物理列序（`Object.keys` 语义）：id → 数据列（定义序）→
  * 审计四列 → 逻辑删位 → 租户位，与 `query.ts` 的 rdbTableColumns 家族
  * 约定一致。
- * @module dsh-rdb/src/mbp/descriptor
+ * @module @ling2/ling-rdb/hub/mbp/descriptor
  */
 
-import { RDB_AUDIT_COLUMNS } from '../query.ts'
+import { RDB_AUDIT_COLUMNS } from '../kit/query.ts'
 
 /** 数据列类型——驱动行映射与参数编码的依据。 */
 export type MbpColumnType = 'string' | 'int' | 'bool' | 'datetime' | 'json'

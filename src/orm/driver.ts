@@ -8,11 +8,11 @@
  * 提供器就是按 acquire/use/release 严格配对设计的，两者对齐。
  *
  * 语句出口统一为 `?` 位置占位符（RdbConnection 契约）；Oracle/达梦/金仓
- * 的编号占位符翻译由各 provider 在传输层完成（dsh-rdb/src/placeholders）。
- * @module dsh-orm/src/driver
+ * 的编号占位符翻译由各 provider 在传输层完成（kit/placeholders）。
+ * @module @ling2/ling-rdb/orm/driver
  */
 import type { AbortableOperationOptions, CompiledQuery, DatabaseConnection, Driver, QueryResult, TransactionSettings } from 'kysely'
-import type { RdbConnection, RdbDatabase } from '../types.ts'
+import type { RdbConnection, RdbDatabase } from '../hub/types.ts'
 
 /** Kysely 查询结果里写路径的可选计数位（读路径恒为 rows）。 */
 type DriverWriteShape = {
@@ -92,7 +92,7 @@ export class RdbKyselyConnection implements DatabaseConnection {
   }
 
   /**
-   * 流式查询门面——dsh-orm 不提供流式消费（无 `.stream()` 路径，分页/批量
+   * 流式查询门面——orm 不提供流式消费（无 `.stream()` 路径，分页/批量
    * 全走 query 出口）；触达即程序性错误，fail loud。
    */
   async *streamQuery<O>(
@@ -100,7 +100,7 @@ export class RdbKyselyConnection implements DatabaseConnection {
     _chunkSize: number,
     _options?: AbortableOperationOptions,
   ): AsyncIterableIterator<QueryResult<O>> {
-    throw new Error('dsh-orm: streamQuery 未支持——流式消费请改走 query 出口分页/批量')
+    throw new Error('ling-rdb/orm: streamQuery 未支持——流式消费请改走 query 出口分页/批量')
   }
 
   /** 释放租约：withConnection 的 work 结束，连接归还池。 */
@@ -193,15 +193,15 @@ export class RdbKyselyBoundDriver implements Driver {
   }
 
   async beginTransaction(): Promise<void> {
-    throw new Error('dsh-orm: 连接绑定的 Kysely 实例已在外层事务内——直接执行语句即可；要控制事务请用外层 db.transaction 门面')
+    throw new Error('ling-rdb/orm: 连接绑定的 Kysely 实例已在外层事务内——直接执行语句即可；要控制事务请用外层 db.transaction 门面')
   }
 
   async commitTransaction(): Promise<void> {
-    throw new Error('dsh-orm: 连接绑定的 Kysely 实例已在外层事务内——提交归外层 db.transaction 门面')
+    throw new Error('ling-rdb/orm: 连接绑定的 Kysely 实例已在外层事务内——提交归外层 db.transaction 门面')
   }
 
   async rollbackTransaction(): Promise<void> {
-    throw new Error('dsh-orm: 连接绑定的 Kysely 实例已在外层事务内——回滚归外层 db.transaction 门面')
+    throw new Error('ling-rdb/orm: 连接绑定的 Kysely 实例已在外层事务内——回滚归外层 db.transaction 门面')
   }
 
   async destroy(): Promise<void> {}
