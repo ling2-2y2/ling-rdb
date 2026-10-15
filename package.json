@@ -1,23 +1,52 @@
 {
   "name": "@ling2/ling-rdb",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Relational database hub for cordis-based hosts: named database registry, migrateRdb versioned DDL runner, MyBatis-Plus-style semantic layer (mbp), a Kysely statement-builder layer (orm), dialect rendering kit, and mysql/postgres/oracle/dm/kingbase provider plugins.",
   "type": "module",
   "license": "MIT",
   "packageManager": "pnpm@11.12.0",
   "author": "ling2-2y2",
-  "repository": { "type": "git", "url": "git+https://github.com/ling2-2y2/ling-rdb.git" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ling2-2y2/ling-rdb.git"
+  },
   "sideEffects": false,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
     "./package.json": "./package.json"
   },
-  "files": ["dist", "src", "LICENSE", "README.md", "README.zh-CN.md", "CHANGELOG.md"],
-  "engines": { "node": ">=22" },
-  "keywords": ["database", "postgres", "mysql", "oracle", "dameng", "kingbase", "kysely", "migration", "mybatis-plus", "cordis", "orm"],
-  "publishConfig": { "access": "public" },
+  "files": [
+    "dist",
+    "src",
+    "LICENSE",
+    "README.md",
+    "README.zh-CN.md",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "keywords": [
+    "database",
+    "postgres",
+    "mysql",
+    "oracle",
+    "dameng",
+    "kingbase",
+    "kysely",
+    "migration",
+    "mybatis-plus",
+    "cordis",
+    "orm"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsdown && tsc -p tsconfig.build.json",
     "test": "vitest run",

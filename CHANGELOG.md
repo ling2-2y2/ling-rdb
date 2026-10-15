@@ -2,6 +2,12 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本语义遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.0.1] - 2026-10-15
+
+### 文档
+
+- README 双语补「环境变量」节：五方言 provider 集成套件门控 URL 示例（`DSH_MYSQL_URL`/`DSH_POSTGRES_URL`/`DSH_ORACLE_URL`/`DSH_DM_URL`/`DSH_KINGBASE_URL`）与专用测试库纪律（迁移套件跑 DDL/DROP）。
+
 ## [1.0.0] - 2026-10-15
 
 ### 首发内容

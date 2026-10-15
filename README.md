@@ -62,6 +62,18 @@ pnpm smoke         # runnable example: examples/kit-smoke
 
 > kysely is an exact pin (`0.29.5`): 0.x minors can break — rerun the orm golden assertions (`tests/orm/compile.spec.ts`) on any upgrade.
 
+## Environment variables
+
+Provider integration suites are gated by their connection URL; unset = skip (not fail). Migration suites run DDL/DROP against the target — **dedicated test databases only, never a shared business instance**.
+
+| Variable | Provider | Example |
+|---|---|---|
+| `DSH_MYSQL_URL` | provider-mysql | `mysql://user:pass@127.0.0.1:3306/ling_rdb_it` |
+| `DSH_POSTGRES_URL` | provider-postgres | `postgres://user:pass@127.0.0.1:5432/ling_rdb_it` |
+| `DSH_ORACLE_URL` | provider-oracle | `oracle://user:pass@127.0.0.1:1521/XEPDB1` |
+| `DSH_DM_URL` | provider-dm (达梦) | `dm://user:pass@127.0.0.1:5236` |
+| `DSH_KINGBASE_URL` | provider-kingbase (PG wire) | `postgres://user:pass@127.0.0.1:5436/ling_rdb_it` |
+
 ## License
 
 [MIT](./LICENSE)

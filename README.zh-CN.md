@@ -62,6 +62,18 @@ pnpm smoke         # 可跑示例：examples/kit-smoke
 
 > kysely 是 exact pin（`0.29.5`）：0.x minor 可破坏——任何升级必须复跑 orm 黄金断言（`tests/orm/compile.spec.ts`）。
 
+## 环境变量
+
+provider 集成套件按各自连接 URL 门控；缺省=skip 非失败。迁移套件会对目标库跑 DDL/DROP——**务必专用测试库，绝不指向共享业务实例**。
+
+| 变量 | Provider | 示例 |
+|---|---|---|
+| `DSH_MYSQL_URL` | provider-mysql | `mysql://user:pass@127.0.0.1:3306/ling_rdb_it` |
+| `DSH_POSTGRES_URL` | provider-postgres | `postgres://user:pass@127.0.0.1:5432/ling_rdb_it` |
+| `DSH_ORACLE_URL` | provider-oracle | `oracle://user:pass@127.0.0.1:1521/XEPDB1` |
+| `DSH_DM_URL` | provider-dm（达梦） | `dm://user:pass@127.0.0.1:5236` |
+| `DSH_KINGBASE_URL` | provider-kingbase（PG wire） | `postgres://user:pass@127.0.0.1:5436/ling_rdb_it` |
+
 ## 许可
 
 [MIT](./LICENSE)
