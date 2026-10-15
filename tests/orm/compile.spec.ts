@@ -128,11 +128,10 @@ describe('五方言编译形态', () => {
     // 反例钉死：varargs 形态（旧 API 习惯）静默编译出恒假条件——永远不要再犯
     const bad = kyselyFor<DemoDb>(fakeDatabase('mysql'))
       .selectFrom('orm_demo_item').selectAll()
-      // @ts-expect-error -- 故意的错误形态（回归钉子）
-      .where(({ or, eb }) => or(
-        eb('f_full_name', 'like', '%演示%'),
-        eb('f_en_code', 'like', '%演示%'),
-      ) as never).compile()
+      // 反例钉死：varargs 形态在运行时静默编译出恒假条件（回归钉子；类型面
+      // 与该错误形态不合，显式叉掉——运行时 golden 断言照旧）。
+      .where((({ or, eb }: { or: (...a: readonly unknown[]) => never; eb: (...a: readonly unknown[]) => never }) =>
+        or(eb('f_full_name', 'like', '%演示%'), eb('f_en_code', 'like', '%演示%'))) as never).compile()
     expect(bad.sql).toBe('select * from `orm_demo_item` where 1 = 0')
   })
 

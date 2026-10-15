@@ -12,6 +12,7 @@ import { RdbKyselyBoundDriver, RdbKyselyConnection, RdbKyselyDriver } from '../.
 /** 录制型 fake：withConnection 的 work 完成时刻 = 租约归还时刻。 */
 function fakeDatabase(dialect: RdbDatabase['dialect'] = 'mysql'): {
   db: RdbDatabase
+  conn: RdbConnection
   calls: Array<{ sql: string; params?: readonly unknown[] }>
   events: string[]
 } {
@@ -28,7 +29,7 @@ function fakeDatabase(dialect: RdbDatabase['dialect'] = 'mysql'): {
     name: 'fake', dialect, identity: 'fake:1',
     query: conn.query.bind(null) as never,
     execute: conn.execute,
-    withConnection: async work => { events.push('ACQUIRE'); await work(conn); events.push('RELEASE') },
+    withConnection: async <T,>(work: (c: RdbConnection) => Promise<T>) => { events.push('ACQUIRE'); const value = await work(conn); events.push('RELEASE'); return value },
     transaction: async work => {
       events.push('BEGIN')
       try { const value = await work(conn); events.push('COMMIT'); return value }
@@ -97,10 +98,10 @@ describe('RdbKyselyDriver', () => {
     // 真实 kysely CompiledQuery 不带 queryKind（dist compiled-query.js 实证）——
     // 分派判据=SQL 形状，两例均**不带** queryKind。
     const del = await wrapper.executeQuery({ sql: 'delete from apps where id = $1', parameters: ['x'], query: {} } as never)
-    expect(del.numDeletedRows).toBe(1n)
+    expect((del as unknown as { numDeletedRows: bigint }).numDeletedRows).toBe(1n)
     expect(del.numAffectedRows).toBe(1n)
     const upd = await wrapper.executeQuery({ sql: 'update t set a = 1', parameters: [], query: {} } as never)
-    expect(upd.numUpdatedRows).toBe(1n)
+    expect((upd as unknown as { numUpdatedRows: bigint }).numUpdatedRows).toBe(1n)
     // Insert 仍走 query()（INSERT..RETURNING 行集保留）；读语句（select）同。
     await wrapper.executeQuery({ sql: 'insert into t () values ()', parameters: [], query: {}, queryKind: 'Insert' } as never)
     await wrapper.executeQuery({ sql: 'select 1', parameters: [], query: {} } as never)
@@ -115,7 +116,7 @@ describe('RdbKyselyDriver', () => {
     } as unknown as RdbConnection
     const wrapper = new RdbKyselyConnection(conn, () => {})
     const del = await wrapper.executeQuery({ sql: 'delete from x', parameters: [], query: {}, queryKind: 'Delete' } as never)
-    expect(del.numDeletedRows).toBe(3n)
+    expect((del as unknown as { numDeletedRows: bigint }).numDeletedRows).toBe(3n)
     // Insert/Raw/Select 仍走 query()（INSERT..RETURNING 行集保留）。
     await wrapper.executeQuery({ sql: 'insert into t () values ()', parameters: [], query: {}, queryKind: 'Insert' } as never)
     await wrapper.executeQuery({ sql: 'select 1', parameters: [], query: {}, queryKind: 'Select' } as never)
@@ -157,7 +158,7 @@ describe('RdbKyselyBoundDriver（事务连接绑定形态，2026-09-05（九）�
     const { conn, events } = fakeDatabase()
     const driver = new RdbKyselyBoundDriver(conn)
     const connection = await driver.acquireConnection()
-    await driver.releaseConnection(connection)
+    await driver.releaseConnection()
     await Promise.resolve()
     // 全程不出现 ACQUIRE/RELEASE（连接归外层事务门面，驱动不动池）
     expect(events).toEqual([])

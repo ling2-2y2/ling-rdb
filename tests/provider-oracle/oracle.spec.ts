@@ -27,7 +27,6 @@ describe.skipIf(url === undefined)('dsh-rdb-oracle (requires DSH_ORACLE_URL)', (
 
   afterEach(async () => {
     await provider.dispose()
-    await ctx.dispose()
   })
 
   it('query/execute 归一化（探针表， ? 翻译为 :n）', async () => {
@@ -89,6 +88,5 @@ describe.skipIf(url === undefined)('dsh-rdb-oracle (requires DSH_ORACLE_URL)', (
       url: 'oracle://nouser:nopass@127.0.0.1:1/DEAD',
     } satisfies RdbOracleConfig)).rejects.toThrow()
     expect(ctx2.rdb.database.names()).not.toContain('oracle_dead')
-    await ctx2.dispose()
   })
 })

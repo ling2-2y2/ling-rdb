@@ -27,7 +27,6 @@ describe.skipIf(url === undefined)('dsh-rdb-dm (requires DSH_DM_URL)', () => {
 
   afterEach(async () => {
     await provider.dispose()
-    await ctx.dispose()
   })
 
   it('query/execute 归一化（探针表，? 翻译为 :n、[{val}] 绑定）', async () => {
@@ -86,6 +85,5 @@ describe.skipIf(url === undefined)('dsh-rdb-dm (requires DSH_DM_URL)', () => {
       url: 'dm://nouser:nopass@127.0.0.1:1',
     } satisfies RdbDmConfig)).rejects.toThrow()
     expect(ctx2.rdb.database.names()).not.toContain('dm_dead')
-    await ctx2.dispose()
   })
 })

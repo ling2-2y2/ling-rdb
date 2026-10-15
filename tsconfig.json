@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2024"],
+    "types": ["node"],
+    "skipLibCheck": true,
+    "strict": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true
+  },
+  "include": ["src/**/*.ts", "tests/**/*.spec.ts", "examples/**/*.mjs", "vitest.config.ts", "tsdown.config.ts"]
+}
