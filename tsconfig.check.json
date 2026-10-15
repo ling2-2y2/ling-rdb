@@ -1,0 +1,22 @@
+{
+  "extends": "../tsconfig.paths.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "strict": true,
+    "target": "ES2023",
+    "lib": [
+      "ES2024"
+    ],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "allowImportingTsExtensions": true,
+    "skipLibCheck": true,
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "src/**/*.ts",
+    "tests/*.spec.ts"
+  ]
+}
