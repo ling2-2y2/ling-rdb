@@ -1,6 +1,6 @@
 {
   "name": "@ling2/ling-rdb",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Relational database hub for cordis-based hosts: named database registry, migrateRdb versioned DDL runner, MyBatis-Plus-style semantic layer (mbp), a Kysely statement-builder layer (orm), dialect rendering kit, and mysql/postgres/oracle/dm/kingbase provider plugins.",
   "type": "module",
   "license": "MIT",
@@ -17,6 +17,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./orm": {
+      "types": "./dist/orm/index.d.ts",
+      "import": "./dist/orm/index.js"
     },
     "./package.json": "./package.json"
   },
@@ -52,7 +56,7 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "check:dts": "tsc -p tsconfig.dts-smoke.json",
-    "smoke": "node --import tsx/esm examples/kit-smoke/boot.mjs",
+    "smoke": "node examples/run-all.mjs",
     "prepublishOnly": "pnpm typecheck && pnpm test && pnpm build"
   },
   "peerDependencies": {

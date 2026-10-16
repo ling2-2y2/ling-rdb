@@ -49,6 +49,155 @@ src/
 └── provider-*/     # five dialect provider plugins (mysql/postgres/oracle/dm/kingbase)
 ```
 
+## mbp semantic layer (single-table CRUD)
+
+One table descriptor + one `BaseMapper` covers the full single-table lifecycle. Audit columns, logical delete, tenant partition and type-driven row mapping are all derived from the descriptor — write paths stamp unconditionally and cannot be skipped. The shapes below mirror the `portal` domain repository of `ling-dsh-admin-pro`.
+
+### Declare the table
+
+```ts
+import { defineTable } from '@ling2/ling-rdb'
+
+// 列定义顺序即物理列序；id → 数据列 → 审计尾 → 逻辑删 → 租户由描述符派生
+const PORTAL_TABLE = defineTable({
+  table: 'demo_portal',
+  id: 'f_id',
+  tenant: 'f_tenant_id',       // 租户分区列；null = 无分区（登记表类）
+  audit: true,                 // 审计四列尾（creator / last_modify 对）
+  deleteMark: 'f_delete_mark', // 逻辑删位；null = 硬删
+  columns: {
+    fullName: { column: 'f_full_name' },
+    enCode: { column: 'f_en_code' },
+    category: { column: 'f_category', nullable: true },
+    type: { column: 'f_type', type: 'int', nullable: true },
+    sortCode: { column: 'f_sort_code', type: 'int', nullable: true },
+    enabledMark: { column: 'f_enabled_mark', type: 'bool', nullable: true },
+  },
+})
+```
+
+### Construct the mapper (forced fill)
+
+```ts
+import { BaseMapper, currentMbpFill } from '@ling2/ling-rdb'
+import type { RdbDatabase } from '@ling2/ling-rdb'
+
+// database = 任意 MbpExecutor（RdbDatabase 或事务连接）；fill 缺省读 ALS 作用域
+const mapper = new BaseMapper<PortalRecord>(PORTAL_TABLE, {
+  database: db as RdbDatabase,
+  fill: () => ({
+    operatorId: currentMbpFill()?.operatorId ?? null,
+    tenantId: currentTenantId(),   // 或任一租户来源
+  }),
+})
+```
+
+Request scope: inside `runWithMbpFill({ operatorId, tenantId }, …)` every mapper write stamps automatically — `insert` emits `id + creator pair + delete-mark + tenant`, `updateById` appends the `last_modify` pair. A caller cannot skip stamping; with no scope at all the values fall to `null` (no crash, no guessing):
+
+```ts
+import { runWithMbpFill } from '@ling2/ling-rdb'
+
+const created = await runWithMbpFill({ operatorId: 'op-1', tenantId: '000000' }, () =>
+  mapper.insert({ fullName: '工作台门户', enCode: 'workbench' }))
+// INSERT 列序（全派生）：f_id → 数据列 → 审计四列 → f_delete_mark → f_tenant_id
+```
+
+### CRUD verbs
+
+```ts
+await mapper.selectById(id)                       // 未删 + 租户谓词自动前置；类型驱动行映射
+await mapper.selectBy('enCode', 'workbench')      // 按非主键列等值读一行
+await mapper.updateById(id, { sortCode: 2 })      // SET 白名单 = 描述符列（未知字段 fail loud）
+await mapper.deleteById(id)                       // 逻辑删表 → UPDATE mark=1；硬删表 → DELETE
+await mapper.saveOrUpdate(entity)                 // 有 id 走更新、无 id 走插入（Ling 分流语义）
+await mapper.selectByIds([id1, id2])              // IN + 未删 + 租户
+await mapper.existsBy('enCode', 'x', { excludeId: id })  // 编辑判重
+await mapper.deleteByIds([id1, id2])              // 批量逻辑删（Ling deleteLogic 语义）
+```
+
+### Typed wrapper + paged double query
+
+```ts
+import { mbpWrapper } from '@ling2/ling-rdb'
+
+const conditions = mbpWrapper(PORTAL_TABLE)
+  .eq('type', 0)                                  // undefined 自动跳过（「传了才生效」）
+  .keyword(['fullName', 'enCode'], keyword)       // (a LIKE ? OR b LIKE ?)
+  .rawCmp('f_creator_time', '>=', '2026-01-01')   // 描述符外列逃生口（列名须固定字面量）
+  .build()
+
+const page = await mapper.selectPage({ page: 1, pageSize: 20, conditions, order: ['f_sort_code ASC'] })
+// COUNT 与 SELECT 共享 WHERE；租户/未删谓词由 mapper 自动前置，参数序 = 谓词出现序
+page.total // → count
+page.items // → decoded records
+```
+
+### Raw SQL + row mapping
+
+Hand-written statements stay first-class for complex queries and aggregates; map driver rows back through the descriptor so the physical/record boundary stays single-sourced:
+
+```ts
+import { decodeRowWith } from '@ling2/ling-rdb'
+
+const rows = await db.query<Record<string, unknown>>(
+  'SELECT * FROM demo_portal WHERE f_en_code = ? AND f_tenant_id = ?', ['workbench', tenantId])
+const record = rows[0] === undefined ? undefined : decodeRowWith<PortalRecord>(PORTAL_TABLE, rows[0])
+```
+
+Transactions rebind the mapper onto the transaction connection with `mapper.use(conn)` — see [Multi-datasource → Transactions](#transactions).
+
+## orm statement layer (complex queries)
+
+Kysely 0.29.5 (exact pin) behind `kyselyFor(database)`: dialect compilers for mysql / postgresql / kingbase / oracle / dm, and every statement still flows through the database facade (pool / transaction / tenant wrapper zero bypass). Kysely itself is never imported bare — the package re-exports `sql` and the types.
+
+```ts
+import { kyselyFor, sql } from '@ling2/ling-rdb'
+
+const ky = kyselyFor(database) // 方言按 database.dialect 分派；未支持方言 fail loud
+
+// 复杂查询：三表 JOIN（条件复合进 ON）+ 条件聚合 + GROUP BY + HAVING + CASE WHEN + 分页
+const rows = await ky
+  .selectFrom('demo_portal as p')
+  .innerJoin('demo_portal_data as d', join =>
+    join.onRef('d.f_portal_id', '=', 'p.f_id').on('d.f_type', '=', 'RELEASE'))
+  .innerJoin('base_user as u', 'u.f_id', 'p.f_creator_user_id')
+  .select(eb => [
+    'p.f_id',
+    'p.f_full_name',
+    'u.f_full_name as creator_name',
+    eb.fn.count('d.f_id').as('snapshot_count'),                       // 发布快照数
+    eb.fn.max('d.f_last_modify_time').as('last_release_at'),          // 最近发布时间
+    eb.fn.sum(eb.case().when('p.f_state', '=', 1).then(1).else(0).end())
+      .as('released_count'),                                          // 已发布标志聚合
+  ])
+  .where('p.f_tenant_id', '=', tenantId)
+  .where('p.f_enabled_mark', '=', 1)
+  .groupBy(['p.f_id', 'p.f_full_name', 'u.f_full_name'])
+  .having(eb => eb.fn.count('d.f_id'), '>=', 2)
+  .orderBy('last_release_at', 'desc')
+  .limit(20)
+  .offset(0)
+  .execute()
+
+// 写：insert 走 query 通道（INSERT..RETURNING 需行集回传）；update/delete 走
+// execute 通道——写计数位保真，numUpdatedRows 不会恒 0
+await ky.insertInto('demo_portal').values({ f_full_name: 'x', f_tenant_id: tenantId }).execute()
+const result = await ky.updateTable('demo_portal')
+  .set({ f_sort_code: 2 }).where('f_id', '=', id).executeTakeFirst()
+result.numUpdatedRows // → 1n
+
+// 构造器覆盖不到的形态（相关子查询等）走 sql 模板——值仍参数绑定，语句仍过数据库门面
+const latest = await sql<{ f_id: string, last_release_at: string | null }>`
+  select p.f_id,
+         (select max(d.f_last_modify_time) from demo_portal_data d
+           where d.f_portal_id = p.f_id and d.f_type = 'RELEASE') as last_release_at
+    from demo_portal p
+    where p.f_tenant_id = ${tenantId} and p.f_enabled_mark = 1
+`.execute(ky)
+```
+
+Runtime-dynamic tables/columns (visualdev-style) use the re-exported `dynamic` module. Transactions rebind Kysely onto the transaction connection with `kyselyFor(database, conn)` — see [Multi-datasource → Transactions](#transactions). Dialect-level imports (compilers, drivers) live on the `@ling2/ling-rdb/orm` subpath.
+
 ## Tenant line
 
 Row-level tenant filtering — the Service-Definition counterpart of Ling's `BasicTenantInnerInterceptor` / `BasicTenantHandler`. **Design baseline: business SQL carries zero tenant predicates.** The request scope rides on `AsyncLocalStorage`; a wrapped database facade compiles the missing tenant predicates in at execution time.
@@ -174,7 +323,7 @@ import { kyselyFor } from '@ling2/ling-rdb'
 
 await this.database.transaction(async conn => {
   const scopedMapper = this.mapper.use(conn)                  // mbp writes on the transaction
-  const scopedKysely = kyselyFor(schema, this.database, conn) // orm reads/writes on the same transaction
+  const scopedKysely = kyselyFor(this.database, conn)         // orm reads/writes on the same transaction
 
   await scopedMapper.insert({ fullName: '张三', enCode: 'zs' })
   await scopedKysely.insertInto('audit_log').values({ f_action: 'create' }).execute()
@@ -183,6 +332,28 @@ await this.database.transaction(async conn => {
 ```
 
 `withConnection(work)` acquires a connection without a transaction (multi-statement reads that should share one connection). Rollback semantics note: statements that only make sense inside an existing transaction must go through `transaction` — the bound driver fails loud on transaction primitives used outside it.
+
+## Examples
+
+Every section of this README has a runnable twin under [`examples/`](./examples). Each file is self-contained — no real database needed: statements are captured by an in-memory facade and asserted — and the set doubles as the repo smoke test (`pnpm smoke`, wired into CI):
+
+| Example | Covers |
+|---|---|
+| [`examples/kit-smoke`](./examples/kit-smoke) | registry, placeholders, upsert, list query, tenant value-rewrite |
+| [`examples/migrations`](./examples/migrations) | `migrateRdb` versioned DDL, dialect-group chains, idempotent replay |
+| [`examples/mbp-crud`](./examples/mbp-crud) | descriptor, forced-fill stamping, CRUD verbs, wrapper, paged double query, `mapper.use(conn)` |
+| [`examples/orm-queries`](./examples/orm-queries) | `kyselyFor` select/join/insert/update/delete, `sql` template, transaction binding |
+| [`examples/tenant-line`](./examples/tenant-line) | zero-predicate injection, multi-rule school domain, JOIN, INSERT auto-column, fail loud |
+| [`examples/tenant-line-security`](./examples/tenant-line-security) | parameterized hostile values, lexical masking, multi-statement/UNION guards, wrap-time identifier validation |
+| [`examples/multi-datasource`](./examples/multi-datasource) | registry, service-key fence, `transaction` rebinding (`mapper.use` + `kyselyFor(db, conn)`), rollback, `withConnection` |
+| [`examples/portal-lifecycle`](./examples/portal-lifecycle) | **complete business lifecycle** modeled on the `portal` domain of ling-dsh-admin-pro: migrations → repository → service → create / duplicate-rejected / list / three-state layout data / release snapshot / multi-row guard / logical delete |
+
+Run one example (or all, via the smoke entry):
+
+```sh
+node --import tsx/esm examples/portal-lifecycle/boot.mjs
+pnpm smoke
+```
 
 ## Environment variables
 

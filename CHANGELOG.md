@@ -2,6 +2,21 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本语义遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [1.4.0] - 2026-10-16
+
+### 新增（orm 公开出口 + examples 全量配套）
+
+- **orm 层公开出口修复**：1.3.0 及之前 `kyselyFor` 在发布物中不可达（tsdown 单入口 + 根出口无 orm + exports 无子路径）——本版三处补齐：①根出口 re-export 高频面（`kyselyFor` / `sql` / `dynamic` 与 `Kysely` / `SelectQueryBuilder` 类型）；②tsdown 双入口（`dist/index.js` + `dist/orm/index.js`）；③exports 增 `./orm` 子路径（方言适配器/驱动类全量面）。
+- **examples 扩容**（README 各节的可跑孪生件，自含可跑、语句捕获断言、`pnpm smoke` 总入口接 CI）：`migrations`（版本化 DDL/方言分派组/幂等重放）、`mbp-crud`（描述符/强制填充/CRUD 动词/Wrapper/分页双查/事务换绑）、`orm-queries`（JOIN 分页/三通道写计数/sql 模板/事务绑定）、`tenant-line`（零谓词注入/师生域多规则/JOIN/INSERT 补列/fail loud）、`tenant-line-security`（敌意值参数化/词法掩码/多语句与 UNION 守卫/标识符校验/词边界）、`multi-datasource`（注册表/服务键栅栏/事务换绑混写/回滚/withConnection）、`portal-lifecycle`（**完整业务生命周期**，照 ling-dsh-admin-pro portal 域：迁移→仓储→服务→创建/判重/列表/三态数据/发布快照/多行守卫/逻辑删）。
+
+### 文档
+
+- README 双语补「mbp 语义层」「orm 语句构造层」两章（照 portal.repository.ts 形态：描述符/强制填充/CRUD 动词/Wrapper 分页/手写 SQL 行映射；kyselyFor 读写写计数通道/sql 模板/事务换绑）+「示例」索引节；修正事务示例 `kyselyFor` 签名笔误（`kyselyFor(database, conn)`）。
+
+### 修复
+
+- `pnpm-workspace.yaml` allowBuilds 补 `dmdb`；package.json 移除 pnpm 11 已不读的 `pnpm.onlyBuiltDependencies` 死配置。
+
 ## [1.3.0] - 2026-10-16
 
 ### 文档

@@ -12,6 +12,10 @@ import { RdbDatabaseRegistry } from './hub/index.ts'
 
 export * from './hub/index.ts'
 export * from './kit/index.ts'
+// orm 语句构造层（Kysely）——根出口放高频面（kyselyFor/sql/dynamic 与两个类型），
+// 方言适配器/驱动类走 '@ling2/ling-rdb/orm' 子路径
+export { kyselyFor, dynamic, sql } from './orm/index.ts'
+export type { Kysely, SelectQueryBuilder } from './orm/index.ts'
 // mbp 语义层（方案 C：描述符 → BaseMapper → 强制填充 → 行映射 → Wrapper）
 export {
   BaseMapper,
