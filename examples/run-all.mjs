@@ -1,7 +1,7 @@
 // 冒烟总入口：依次运行 examples/ 下全部自含示例，任一失败即非零退出。
 // CI（ci.yml 的 pnpm smoke）与本仓发布前验证都走本文件。
 import { spawnSync } from 'node:child_process'
-import { readdirSync } from 'node:fs'
+import { existsSync, readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -9,6 +9,7 @@ const here = dirname(fileURLToPath(import.meta.url))
 const examples = readdirSync(here, { withFileTypes: true })
   .filter(entry => entry.isDirectory())
   .map(entry => join(entry.name, 'boot.mjs'))
+  .filter(relative => existsSync(join(here, relative))) // _lib 等辅助目录无 boot
   .sort()
 
 let failed = 0

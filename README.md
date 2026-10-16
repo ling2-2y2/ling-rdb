@@ -335,18 +335,18 @@ await this.database.transaction(async conn => {
 
 ## Examples
 
-Every section of this README has a runnable twin under [`examples/`](./examples). Each file is self-contained — no real database needed: statements are captured by an in-memory facade and asserted — and the set doubles as the repo smoke test (`pnpm smoke`, wired into CI):
+Every section of this README has a runnable twin under [`examples/`](./examples). Examples are written to be **read by humans**: each step prints the generated SQL, parameters and results as it runs (a shared in-memory capture facade in [`examples/_lib`](./examples/_lib) stands in for the database — no real database needed). The set doubles as the repo smoke test (`pnpm smoke`, wired into CI); behavioral contracts are pinned by the vitest suite under `tests/`.
 
 | Example | Covers |
 |---|---|
-| [`examples/kit-smoke`](./examples/kit-smoke) | registry, placeholders, upsert, list query, tenant value-rewrite |
+| [`examples/kit-basics`](./examples/kit-basics) | registry, placeholders, upsert, list query, tenant value-rewrite |
 | [`examples/migrations`](./examples/migrations) | `migrateRdb` versioned DDL, dialect-group chains, idempotent replay |
 | [`examples/mbp-crud`](./examples/mbp-crud) | descriptor, forced-fill stamping, CRUD verbs, wrapper, paged double query, `mapper.use(conn)` |
-| [`examples/orm-queries`](./examples/orm-queries) | `kyselyFor` select/join/insert/update/delete, `sql` template, transaction binding |
+| [`examples/orm-queries`](./examples/orm-queries) | `kyselyFor` complex join/aggregate/paged query, write channels, `sql` template, transaction binding |
 | [`examples/tenant-line`](./examples/tenant-line) | zero-predicate injection, multi-rule school domain, JOIN, INSERT auto-column, fail loud |
 | [`examples/tenant-line-security`](./examples/tenant-line-security) | parameterized hostile values, lexical masking, multi-statement/UNION guards, wrap-time identifier validation |
 | [`examples/multi-datasource`](./examples/multi-datasource) | registry, service-key fence, `transaction` rebinding (`mapper.use` + `kyselyFor(db, conn)`), rollback, `withConnection` |
-| [`examples/portal-lifecycle`](./examples/portal-lifecycle) | **complete business lifecycle** modeled on the `portal` domain of ling-dsh-admin-pro: migrations → repository → service → create / duplicate-rejected / list / three-state layout data / release snapshot / multi-row guard / logical delete |
+| [`examples/portal-lifecycle`](./examples/portal-lifecycle) | **complete business lifecycle** modeled on the `portal` domain of ling-dsh-admin-pro, split into repository / service / driver files: migrations → create / duplicate-rejected / list / three-state layout data / release snapshot / multi-row guard / logical delete |
 
 Run one example (or all, via the smoke entry):
 

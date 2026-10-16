@@ -2,6 +2,12 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本语义遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [未发布]
+
+### 文档
+
+- examples 全量重写为「给人读」形态（用户令：examples 是给人看的，此前断言汤毫无可读性）：断言噪音清零，每步打印生成的 SQL、参数与返回值；共用捕获假库上收 `examples/_lib/fake-db.mjs`（各示例脚手架去重）；每个示例目录新增 README（演示内容/跑法/对照章节）；`portal-lifecycle` 拆分 `portal.repository.mjs` / `portal.service.mjs` / `boot.mjs` 三文件照 portal 域真实工程结构；`kit-smoke` 更名 `kit-basics`。行为契约仍由 `tests/` vitest 套件钉守，examples 兼任 `pnpm smoke` 冒烟（跑通即过）。
+
 ## [1.4.0] - 2026-10-16
 
 ### 新增（orm 公开出口 + examples 全量配套）

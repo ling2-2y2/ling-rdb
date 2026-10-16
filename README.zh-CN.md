@@ -335,18 +335,18 @@ await this.database.transaction(async conn => {
 
 ## 示例（examples）
 
-本 README 每一节在 [`examples/`](./examples) 下都有可跑的孪生件。每个文件自含可跑——不需要真实数据库（语句由内存假库捕获并断言）——整组兼任仓库冒烟测试（`pnpm smoke`，已接 CI）：
+本 README 每一节在 [`examples/`](./examples) 下都有可跑的孪生件。示例按「**给人读**」写：每一步把生成的 SQL、参数与返回值打印出来（数据库由 [`examples/_lib`](./examples/_lib) 的共用内存假库顶替，无需真实库）；整组兼任仓库冒烟测试（`pnpm smoke`，已接 CI），行为契约由 `tests/` 的 vitest 套件钉守。
 
 | 示例 | 覆盖 |
 |---|---|
-| [`examples/kit-smoke`](./examples/kit-smoke) | 注册表、占位符、upsert、列表查询、租户换值 |
+| [`examples/kit-basics`](./examples/kit-basics) | 注册表、占位符、upsert、列表查询、租户换值 |
 | [`examples/migrations`](./examples/migrations) | `migrateRdb` 版本化 DDL、方言分派组、幂等重放 |
 | [`examples/mbp-crud`](./examples/mbp-crud) | 描述符、强制填充、CRUD 动词、Wrapper、分页双查、`mapper.use(conn)` |
-| [`examples/orm-queries`](./examples/orm-queries) | `kyselyFor` select/join/insert/update/delete、`sql` 模板、事务换绑 |
+| [`examples/orm-queries`](./examples/orm-queries) | `kyselyFor` 三表 JOIN/聚合/分页复杂查询、写三通道、`sql` 模板、事务换绑 |
 | [`examples/tenant-line`](./examples/tenant-line) | 零谓词注入、师生域多规则、JOIN、INSERT 补列、fail loud |
 | [`examples/tenant-line-security`](./examples/tenant-line-security) | 敌意值参数化、词法掩码、多语句/UNION 守卫、标识符包装期校验 |
 | [`examples/multi-datasource`](./examples/multi-datasource) | 注册表、服务键栅栏、事务换绑（`mapper.use` + `kyselyFor(db, conn)`）、回滚、`withConnection` |
-| [`examples/portal-lifecycle`](./examples/portal-lifecycle) | **完整业务生命周期**（照 ling-dsh-admin-pro portal 域）：迁移 → 仓储 → 服务 → 创建/判重拒绝/列表/三态布局数据/发布快照/多行守卫/逻辑删 |
+| [`examples/portal-lifecycle`](./examples/portal-lifecycle) | **完整业务生命周期**（照 ling-dsh-admin-pro portal 域，拆仓储/服务/驱动三文件）：迁移 → 创建/判重拒绝/列表/三态布局数据/发布快照/多行守卫/逻辑删 |
 
 单个示例（或全组冒烟）：
 
