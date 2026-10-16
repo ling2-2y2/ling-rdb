@@ -69,9 +69,9 @@ describe('组合 2：聚合与分组统计', () => {
     })
   })
   it('Q104 按月统计（WHERE 已有 + GROUP + ORDER）→ AND 插在 GROUP 之前', () => {
-    expect(inj("SELECT DATE_FORMAT(created_at, '%Y-%m') AS month, SUM(total_amount) AS amount FROM orders WHERE status = 'paid' GROUP BY month ORDER BY month", ['x'])).toEqual({
-      sql: "SELECT DATE_FORMAT(created_at, '%Y-%m') AS month, SUM(total_amount) AS amount FROM orders WHERE status = 'paid' AND f_tenant_id = ? GROUP BY month ORDER BY month",
-      params: ['x', '000000'],
+    expect(inj("SELECT DATE_FORMAT(created_at, '%Y-%m') AS month, SUM(total_amount) AS amount FROM orders WHERE status = ? GROUP BY month ORDER BY month", ['paid'])).toEqual({
+      sql: "SELECT DATE_FORMAT(created_at, '%Y-%m') AS month, SUM(total_amount) AS amount FROM orders WHERE status = ? AND f_tenant_id = ? GROUP BY month ORDER BY month",
+      params: ['paid', '000000'],
     })
   })
   it('Q105 分类统计 → WHERE 插在 GROUP 之前', () => {

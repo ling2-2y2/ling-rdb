@@ -500,10 +500,24 @@ export function injectTenantLinePredicates(
   const sepL = left.endsWith(' ') || left.endsWith('(') ? '' : ' '
   const sepR = right === '' || /^[ )]/.test(right) ? '' : ' '
   const body = (topWhere >= 0 ? 'AND ' : 'WHERE ') + pairs.map(p => `${p.prefix}${rule.column} = ?`).join(' AND ')
+  // 参数重建：注入谓词的占位符位于「注入点前既有占位符」之后，注入值必须
+  // 插进同序号位——尾部追加会让尾随占位符（mbp selectPage 恒带
+  // `LIMIT ? OFFSET ?`）错位绑定（LIMIT 错绑 OFFSET 值 0 = 恒空集，真机
+  // 2026-10-16 wiki 生成腿 0-chunks 实证）。
+  const ordinalsBefore = countPlaceholders(masked.slice(0, insertAt))
+  const next = [...(params ?? [])]
+  next.splice(ordinalsBefore, 0, ...pairs.map(() => tenantId))
   return {
     sql: left + sepL + body + sepR + right,
-    params: [...(params ?? []), ...pairs.map(() => tenantId)],
+    params: next,
   }
+}
+
+/** 占位符计数（掩码后文本段——引号内 `?` 已被掩掉不误计）。 */
+function countPlaceholders(segment: string): number {
+  let count = 0
+  for (const ch of segment) if (ch === '?') count += 1
+  return count
 }
 
 /**

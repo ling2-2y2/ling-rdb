@@ -346,19 +346,39 @@ describe('注入式租户过滤（业务 SQL 零租户谓词——设计基线�
   })
 
   it('WHERE 已存在：谓词追加在 WHERE 尾（ORDER BY/LIMIT 之前）', () => {
-    const r = inject('SELECT * FROM base_user WHERE f_age > 18 ORDER BY f_id LIMIT 10', ['x'])
-    expect(r.sql).toBe('SELECT * FROM base_user WHERE f_age > 18 AND f_tenant_id = ? ORDER BY f_id LIMIT 10')
+    const r = inject('SELECT * FROM base_user WHERE f_age > ? ORDER BY f_id LIMIT 10', ['x'])
+    expect(r.sql).toBe('SELECT * FROM base_user WHERE f_age > ? AND f_tenant_id = ? ORDER BY f_id LIMIT 10')
     expect(r.params).toEqual(['x', '000000'])
+  })
+
+  it('尾随占位符（LIMIT ? OFFSET ?）：注入值插对位，不挤占 LIMIT/OFFSET 绑定（2026-10-16 真机 0-chunks 缺陷回归钉）', () => {
+    // 缺陷场景：mbp selectPage 恒带 LIMIT ? OFFSET ?——注入谓词在 WHERE 尾
+    // （第 3 个占位符位），注入值若尾部追加会错位成 LIMIT 绑 OFFSET 值 0 =
+    // 恒空集（wiki 生成腿真机实证）。正确行为=注入值插进同序号位。
+    const r = inject(
+      'SELECT f_id FROM base_user WHERE f_doc = ? AND f_kind = ? ORDER BY f_pos ASC LIMIT ? OFFSET ?',
+      ['d1', 'text', 10_000, 0],
+    )
+    expect(r.sql).toBe(
+      'SELECT f_id FROM base_user WHERE f_doc = ? AND f_kind = ? AND f_tenant_id = ? ORDER BY f_pos ASC LIMIT ? OFFSET ?',
+    )
+    expect(r.params).toEqual(['d1', 'text', '000000', 10_000, 0])
+  })
+
+  it('尾随占位符且无 WHERE：注入值同样按注入点序号插入', () => {
+    const r = inject('SELECT * FROM base_user ORDER BY f_id LIMIT ? OFFSET ?', [5, 0])
+    expect(r.sql).toBe('SELECT * FROM base_user WHERE f_tenant_id = ? ORDER BY f_id LIMIT ? OFFSET ?')
+    expect(r.params).toEqual(['000000', 5, 0])
   })
 
   it('JOIN 多表：受控别名注入，非受控别名不注入；主表有别名时注入别名形态', () => {
     const r = inject(
-      'SELECT u.*, d.f_name FROM base_user u JOIN base_dept d ON u.f_dept_id = d.f_id WHERE u.f_age > 18',
+      'SELECT u.*, d.f_name FROM base_user u JOIN base_dept d ON u.f_dept_id = d.f_id WHERE u.f_age > ?',
       ['x'],
     )
     expect(r.sql).toBe(
       'SELECT u.*, d.f_name FROM base_user u JOIN base_dept d ON u.f_dept_id = d.f_id'
-      + ' WHERE u.f_age > 18 AND u.f_tenant_id = ?',
+      + ' WHERE u.f_age > ? AND u.f_tenant_id = ?',
     )
     expect(r.params).toEqual(['x', '000000'])
   })
@@ -386,12 +406,12 @@ describe('注入式租户过滤（业务 SQL 零租户谓词——设计基线�
 
   it('自连接：两个别名各注入一次（主表别名形态优先，不注裸列）', () => {
     const r = inject(
-      'SELECT a.* FROM base_user a JOIN base_user b ON a.f_pid = b.f_id WHERE a.f_age > 18',
+      'SELECT a.* FROM base_user a JOIN base_user b ON a.f_pid = b.f_id WHERE a.f_age > ?',
       ['x'],
     )
     expect(r.sql).toBe(
       'SELECT a.* FROM base_user a JOIN base_user b ON a.f_pid = b.f_id'
-      + ' WHERE a.f_age > 18 AND a.f_tenant_id = ? AND b.f_tenant_id = ?',
+      + ' WHERE a.f_age > ? AND a.f_tenant_id = ? AND b.f_tenant_id = ?',
     )
     expect(r.params).toEqual(['x', '000000', '000000'])
   })
@@ -412,7 +432,7 @@ describe('注入式租户过滤（业务 SQL 零租户谓词——设计基线�
     const wrapped = wrapTenantLineDatabase(db, RULE2)
     await runWithTenantLine({ tenantId: '000000', filter: true }, () =>
       wrapped.query(
-        'SELECT u.*, d.f_name FROM base_user u JOIN base_dept d ON u.f_dept_id = d.f_id WHERE u.f_age > 18',
+        'SELECT u.*, d.f_name FROM base_user u JOIN base_dept d ON u.f_dept_id = d.f_id WHERE u.f_age > ?',
         ['x'],
       ))
     expect(calls[0]!.sql).toContain('AND u.f_tenant_id = ?')
