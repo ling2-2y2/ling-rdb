@@ -8,14 +8,14 @@
  *   DSH_POSTGRES_DBNAME='dsh_weknora' \
  *   node scripts/create-database.mjs
  *
- * DSH_POSTGRES_DBNAME 缺省 dsh_weknora；admin URL 必须指向已存在的库
+ * DSH_POSTGRES_DBNAME 缺省 ling_aip（批2 归并终态）；admin URL 必须指向已存在的库
  * （惯例用系统库 postgres）。
  * @module dsh-rdb-postgres/scripts/create-database
  */
 import { Client } from 'pg'
 
 const adminUrl = process.env.DSH_POSTGRES_ADMIN_URL
-const dbname = process.env.DSH_POSTGRES_DBNAME ?? 'dsh_weknora'
+const dbname = process.env.DSH_POSTGRES_DBNAME ?? 'ling_aip'
 if (!adminUrl) {
   console.error('缺少 DSH_POSTGRES_ADMIN_URL（指向已存在的管理库，如 postgres://…/postgres）')
   process.exit(1)
