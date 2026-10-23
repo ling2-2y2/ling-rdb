@@ -8,6 +8,7 @@ import type { RdbConnection, RdbDatabase } from '../src/hub/types.ts'
 import {
   currentTenantLine,
   ignoreTenantLine,
+  injectInsertTenantColumn,
   injectTenantLinePredicates,
   neutralizeTenantLine,
   rewriteTenantLineParams,
@@ -437,5 +438,105 @@ describe('注入式租户过滤（业务 SQL 零租户谓词——设计基线�
       ))
     expect(calls[0]!.sql).toContain('AND u.f_tenant_id = ?')
     expect(calls[0]!.params).toEqual(['x', '000000'])
+  })
+})
+
+
+describe('受控表清单大小写归一（2026-10-24 报障回归：Ling 源混合大小写表名 base_Role_relation）', () => {
+  // 报障原文：rbac.aggregate/currentUser 抛「语句顶层涉及受控表 'base_Role_relation'
+  // 但解析失败，无法注入租户谓词」。根因：admin 受控清单自 DDL 键名派生（保留源
+  // 混合大小写），而注入路径把 SQL 侧表名 toLowerCase 后比对——大小写敏感集合
+  // 永不命中 → 防线二误炸；INSERT 自动补列路径则静默跳过。约定=清单与语句表名
+  // 一律小写比对（PG 无引号标识符折叠事实）。
+  const RULE_MIXED: TenantLineRule = { column: 'f_tenant_id', tables: ['base_Role_relation', 'base_role'] }
+
+  it('手写租户谓词语句（报障语句原样）：不再误炸防线二，原样透传', () => {
+    const r = injectTenantLinePredicates(
+      'SELECT f_id, f_role_id, f_object_type, f_object_id FROM base_Role_relation WHERE f_object_id IN (?, ?) AND f_tenant_id = ?',
+      ['o1', 'o2', 'whatever'],
+      RULE_MIXED,
+      '000000',
+    )
+    expect(r.sql).toBe('SELECT f_id, f_role_id, f_object_type, f_object_id FROM base_Role_relation WHERE f_object_id IN (?, ?) AND f_tenant_id = ?')
+    expect(r.params).toEqual(['o1', 'o2', 'whatever'])
+  })
+
+  it('零谓词语句：混合大小写受控表正常注入', () => {
+    const r = injectTenantLinePredicates(
+      'SELECT f_id FROM base_Role_relation WHERE f_object_id = ?',
+      ['o1'],
+      RULE_MIXED,
+      '000000',
+    )
+    expect(r.sql).toBe('SELECT f_id FROM base_Role_relation WHERE f_object_id = ? AND f_tenant_id = ?')
+    expect(r.params).toEqual(['o1', '000000'])
+  })
+
+  it('JOIN 别名指向混合大小写受控表：别名形态注入', () => {
+    const r = injectTenantLinePredicates(
+      'SELECT rr.f_id FROM base_Role_relation rr JOIN base_role r ON rr.f_role_id = r.f_id',
+      [],
+      RULE_MIXED,
+      '000000',
+    )
+    expect(r.sql).toBe(
+      'SELECT rr.f_id FROM base_Role_relation rr JOIN base_role r ON rr.f_role_id = r.f_id'
+      + ' WHERE rr.f_tenant_id = ? AND r.f_tenant_id = ?',
+    )
+    expect(r.params).toEqual(['000000', '000000'])
+  })
+
+  it('换值路径（手写谓词）：混合大小写受控表的谓词绑定值换会话租户', () => {
+    const next = rewriteTenantLineParams(
+      'SELECT f_id FROM base_Role_relation WHERE f_object_id = ? AND f_tenant_id = ?',
+      ['o1', 'whatever'],
+      RULE_MIXED,
+      '000000',
+    )
+    expect(next).toEqual(['o1', '000000'])
+  })
+
+  it('INSERT 无租户列：混合大小写受控表自动补列补值（修复前=静默跳过）', () => {
+    const r = injectInsertTenantColumn(
+      'INSERT INTO base_Role_relation (f_id, f_role_id) VALUES (?, ?)',
+      ['id1', 'r1'],
+      RULE_MIXED,
+      '000000',
+    )
+    expect(r.sql).toBe('INSERT INTO base_Role_relation (f_id, f_role_id, f_tenant_id) VALUES (?, ?, ?)')
+    expect(r.params).toEqual(['id1', 'r1', '000000'])
+  })
+
+  it('超管中和路径：混合大小写受控表谓词改写 1 = 1 并剔除参数', () => {
+    const r = neutralizeTenantLine(
+      'SELECT f_id FROM base_Role_relation WHERE f_object_id = ? AND f_tenant_id = ?',
+      ['o1', '000000'],
+      RULE_MIXED,
+      { adminTables: new Set<string>(), tenantId: 'admin' },
+    )
+    expect(r.sql).toBe('SELECT f_id FROM base_Role_relation WHERE f_object_id = ? AND 1 = 1')
+    expect(r.params).toEqual(['o1'])
+  })
+
+  it('端到端：包装外观下报障语句全链通过（换值命中、零误炸）', async () => {
+    const calls: Array<{ sql: string; params?: readonly unknown[] }> = []
+    const db: RdbDatabase = {
+      name: 'fake', dialect: 'postgresql', identity: 'fake:2',
+      query: async (sql, params) => { calls.push({ sql, params }); return [] },
+      execute: async () => ({ affectedRows: 0, insertId: 0 }),
+      withConnection: async <T,>(work: (conn: RdbConnection) => Promise<T>) => work({
+        query: async (sql: string, params?: readonly unknown[]) => { calls.push({ sql, params }); return [] },
+        execute: async (sql: string, params?: readonly unknown[]) => { calls.push({ sql, params }); return { affectedRows: 0, insertId: 0 } },
+      } as never),
+      transaction: async <T,>(work: (conn: RdbConnection) => Promise<T>) => work({} as never),
+      close: async () => {},
+    }
+    const wrapped = wrapTenantLineDatabase(db, RULE_MIXED)
+    await runWithTenantLine({ tenantId: 'tenant2', filter: true }, () =>
+      wrapped.query(
+        'SELECT f_id, f_role_id, f_object_type, f_object_id FROM base_Role_relation WHERE f_object_id IN (?, ?) AND f_tenant_id = ?',
+        ['o1', 'o2', '000000'],
+      ))
+    expect(calls[0]!.params).toEqual(['o1', 'o2', 'tenant2'])
   })
 })

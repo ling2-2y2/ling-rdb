@@ -191,13 +191,14 @@ function parseSelectSources(masked: string): { primary: string; aliases: Map<str
     primary = from[1]!
     const maybeAlias = from[2]
     if (maybeAlias !== undefined && !CLAUSE_KEYWORDS.has(maybeAlias.toUpperCase())) {
-      aliases.set(maybeAlias, primary)
+      // 别名键/表名值统一小写（大小写归一约定——与 tablesOf 同源）。
+      aliases.set(maybeAlias.toLowerCase(), primary.toLowerCase())
     }
   }
   for (const join of masked.matchAll(/\bJOIN\s+(\w+)(?:\s+(?!ON\b)(\w+))?\s+ON\b/g)) {
     const table = join[1]!
     const alias = join[2]
-    if (alias !== undefined) aliases.set(alias, table)
+    if (alias !== undefined) aliases.set(alias.toLowerCase(), table.toLowerCase())
   }
   return { primary, aliases }
 }
@@ -246,7 +247,7 @@ function tenantLineOrdinals(sql: string, column: string, tables: Set<string>): n
   const ordinals: number[] = []
 
   if (target.insertColumns !== undefined) {
-      if (!tables.has(target.primary)) return []
+      if (!tables.has(target.primary.toLowerCase())) return []
     const slot = target.insertColumns.indexOf(column)
     if (slot >= 0 && slot < positions.length) ordinals.push(slot)
     return ordinals
@@ -254,14 +255,15 @@ function tenantLineOrdinals(sql: string, column: string, tables: Set<string>): n
 
   const predicate = new RegExp(`((?:\\w+)\\.)?\\b${escapeRegExp(column)}\\s*=\\s*\\?`, 'g')
   const columnQualifier = column.includes('.') ? column.split('.')[0]!.toLowerCase() + '.' : undefined
+  const lowerPrimary = target.primary === '' ? '' : target.primary.toLowerCase()
   for (const match of masked.matchAll(predicate)) {
     const at = match.index + match[0].length - 1
     const aliasPrefix = match[1] !== undefined ? match[1].slice(0, -1).toLowerCase() : undefined
     let table: string | undefined
     if (aliasPrefix === undefined) {
-      table = target.primary === '' ? undefined : target.primary
+      table = lowerPrimary === '' ? undefined : lowerPrimary
     } else if (columnQualifier !== undefined && aliasPrefix === columnQualifier) {
-      table = target.primary === '' ? undefined : target.primary
+      table = lowerPrimary === '' ? undefined : lowerPrimary
     } else {
       table = target.aliases?.get(aliasPrefix)
     }
@@ -301,7 +303,7 @@ export function rewriteTenantLineParams(
 ): readonly unknown[] | undefined {
   assertSingleStatement(maskQuoted(sql), depthScan(maskQuoted(sql)))
   if (params === undefined || params.length === 0) return params
-  const tables = rule.tables instanceof Set ? rule.tables : new Set(rule.tables)
+  const tables = tablesOf(rule)
   const ordinals = tenantLineOrdinals(sql, rule.column, tables)
   if (ordinals.length === 0) return params
   const next = [...params]
@@ -367,7 +369,12 @@ function assertRuleIdentifier(kind: string, name: string): void {
 }
 
 function tablesOf(rule: TenantLineRule): Set<string> {
-  return rule.tables instanceof Set ? rule.tables : new Set<string>(rule.tables)
+  // 大小写归一（2026-10-24 报障回归）：受控表清单与语句表名一律小写比对。
+  // 业务清单可能保留源混合大小写表名（Ling 源 base_Role_relation——DDL 键名
+  // 原样派生），而 SQL 侧 token 各路径统一 toLowerCase 后比对；集合不归一
+  // 会出现「防线正则提得着、注入比对永不中」→ 防线二误炸（rbac.aggregate/
+  // currentUser 报障实证）。PG 无引号标识符折叠为小写=物理事实，归一无歧义。
+  return new Set<string>([...rule.tables].map(table => table.toLowerCase()))
 }
 
 /**
@@ -433,7 +440,8 @@ export function injectTenantLinePredicates(
     const joinRe = /\bJOIN\s+(\w+)(?:\s+(?!ON\b)(\w+))?\s+ON\b/gi
     for (const j of masked.matchAll(joinRe)) {
       if (depth[j.index ?? 0] !== 0) continue
-      if (j[2] !== undefined) aliases.set(j[2]!.toLowerCase(), j[1]!)
+      // 键/值统一小写（大小写归一约定——比对集合已归一）。
+      if (j[2] !== undefined) aliases.set(j[2]!.toLowerCase(), j[1]!.toLowerCase())
     }
   }
   const lowerPrimary = primary.toLowerCase()
@@ -630,26 +638,28 @@ export function neutralizeTenantLine(
   if (positions.length === 0) return { sql, params }
   const target = statementTarget(masked)
   if (target.insertColumns !== undefined) return { sql, params }
-  const tables = rule.tables instanceof Set ? rule.tables : new Set(rule.tables)
+  const tables = tablesOf(rule)
+  const adminTables = new Set([...admin.adminTables].map(table => table.toLowerCase()))
   const cuts: Array<{ start: number; end: number; ordinal: number }> = []
   const swap = new Set<number>()
   const predicate = new RegExp(`((?:\\w+)\\.)?\\b${escapeRegExp(rule.column)}\\s*=\\s*\\?`, 'g')
   const columnQualifier = rule.column.includes('.') ? rule.column.split('.')[0]!.toLowerCase() + '.' : undefined
+  const lowerPrimary = target.primary === '' ? '' : target.primary.toLowerCase()
   for (const match of masked.matchAll(predicate)) {
     const at = match.index + match[0].length - 1
     const aliasPrefix = match[1] !== undefined ? match[1].slice(0, -1).toLowerCase() : undefined
     let table: string | undefined
     if (aliasPrefix === undefined) {
-      table = target.primary === '' ? undefined : target.primary
+      table = lowerPrimary === '' ? undefined : lowerPrimary
     } else if (columnQualifier !== undefined && aliasPrefix === columnQualifier) {
-      table = target.primary === '' ? undefined : target.primary
+      table = lowerPrimary === '' ? undefined : lowerPrimary
     } else {
       table = target.aliases?.get(aliasPrefix)
     }
     if (table === undefined || !tables.has(table)) continue
     const ordinal = ordinalBefore(positions, at)
     if (ordinal >= positions.length || ordinal >= (params?.length ?? 0)) continue
-    if (admin.adminTables.has(table)) swap.add(ordinal)
+    if (adminTables.has(table)) swap.add(ordinal)
     else cuts.push({ start: match.index, end: match.index + match[0].length, ordinal })
   }
   if (cuts.length === 0 && swap.size === 0) return { sql, params }
