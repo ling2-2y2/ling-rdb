@@ -5,7 +5,7 @@
  * @module @ling2/ling-rdb-kingbase/tests/kingbase.spec
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { Context } from '@ling2/ling-cordis'
+import { Context } from '@ling2/ling-coris'
 import { Rdb } from '../../src/index.ts'
 import { apply, Config as RdbKingbaseConfig, name, inject } from '../../src/provider-kingbase/index.ts'
 import { toKingbaseSql } from '../../src/provider-kingbase/translate.ts'

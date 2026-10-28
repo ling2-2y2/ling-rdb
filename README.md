@@ -17,7 +17,7 @@ A **relational database hub** for cordis-based TypeScript hosts: mount one or ma
 
 ```sh
 npm install @ling2/ling-rdb
-# peer: @ling2/ling-cordis ^2.0.0
+# peer: @ling2/ling-coris ^2.0.0
 ```
 
 ## Quick start

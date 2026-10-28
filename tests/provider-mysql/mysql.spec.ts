@@ -7,7 +7,7 @@
  * @module @ling2/ling-rdb-mysql/tests/mysql
  */
 
-import { Context, type Fiber } from '@ling2/ling-cordis'
+import { Context, type Fiber } from '@ling2/ling-coris'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import Rdb from '../../src/index.ts'
 import { apply, type Config } from '../../src/provider-mysql/index.ts'

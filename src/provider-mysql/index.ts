@@ -8,8 +8,8 @@
  * @module @ling2/ling-rdb-mysql
  */
 
-import type { Context } from '@ling2/ling-cordis'
-import { schemastery as z } from '@ling2/ling-cordis'
+import type { Context } from '@ling2/ling-coris'
+import { schemastery as z } from '@ling2/ling-coris'
 import { rdbDatabaseServiceKey } from '../index.ts'
 import { MysqlRdbDatabase } from './database.ts'
 

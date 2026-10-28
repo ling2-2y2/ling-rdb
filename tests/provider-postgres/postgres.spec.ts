@@ -6,7 +6,7 @@
  * @module @ling2/ling-rdb-postgres/tests/postgres.spec
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { Context } from '@ling2/ling-cordis'
+import { Context } from '@ling2/ling-coris'
 import { Rdb } from '../../src/index.ts'
 import { migrateRdb } from '../../src/hub/migrate.ts'
 import { apply, Config as RdbPostgresConfig, name, inject } from '../../src/provider-postgres/index.ts'

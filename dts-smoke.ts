@@ -1,6 +1,6 @@
 /**
  * dts 冒烟——外部消费者视角钉发布类型面。双管线主靶：tsc 直出的 d.ts 模块
- * 树必须完整（相对路径自洽），且 `declare module '@ling2/ling-cordis'` 的
+ * 树必须完整（相对路径自洽），且 `declare module '@ling2/ling-coris'` 的
  * `Context.rdb` 增强随包可见。
  */
 import Rdb, {
@@ -21,7 +21,7 @@ import Rdb, {
   type RdbErrorCode,
   type RdbMigration,
 } from '@ling2/ling-rdb'
-import type { Context } from '@ling2/ling-cordis'
+import type { Context } from '@ling2/ling-coris'
 
 // ① 值面符号齐全
 const _values: unknown[] = [

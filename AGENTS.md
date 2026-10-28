@@ -1,6 +1,6 @@
 # AGENTS.md — ling-rdb（关系库栈子仓）
 
-独立子仓（@ling2/ling-rdb）：hub + orm + mbp + 五方言 provider 三段同包。树内消费统一经 `@ling2/ling-rdb` shim 桥（树根 scripts/build/link-alias.mjs 再生）。本仓是 ling-cordis 血统姊妹仓，发布纪律同 ling-cordis（SemVer+CHANGELOG+prepublishOnly 三连）。
+独立子仓（@ling2/ling-rdb）：hub + orm + mbp + 五方言 provider 三段同包。树内消费统一经 `@ling2/ling-rdb` shim 桥（树根 scripts/build/link-alias.mjs 再生）。本仓是 ling-coris 血统姊妹仓，发布纪律同 ling-coris（SemVer+CHANGELOG+prepublishOnly 三连）。
 
 ## 目录速览
 

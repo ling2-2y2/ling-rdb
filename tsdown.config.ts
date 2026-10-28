@@ -15,6 +15,6 @@ export default defineConfig({
   dts: false,
   sourcemap: true,
   clean: true,
-  external: ['kysely', 'mysql2', 'pg', 'oracledb', 'dmdb', '@ling2/ling-cordis'],
+  external: ['kysely', 'mysql2', 'pg', 'oracledb', 'dmdb', '@ling2/ling-coris'],
   outExtensions: () => ({ js: '.js' }),
 })

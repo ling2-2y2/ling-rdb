@@ -7,7 +7,7 @@
  * @module @ling2/ling-rdb
  */
 
-import { Context, Service } from '@ling2/ling-cordis'
+import { Context, Service } from '@ling2/ling-coris'
 import { RdbDatabaseRegistry } from './hub/index.ts'
 
 export * from './hub/index.ts'
@@ -48,7 +48,7 @@ export type {
   MbpTableSpec,
 } from './mbp/index.ts'
 
-declare module '@ling2/ling-cordis' {
+declare module '@ling2/ling-coris' {
   interface Context {
     rdb: Rdb
   }

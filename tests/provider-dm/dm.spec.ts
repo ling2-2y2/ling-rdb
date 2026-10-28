@@ -6,7 +6,7 @@
  * @module @ling2/ling-rdb-dm/tests/dm.spec
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { Context } from '@ling2/ling-cordis'
+import { Context } from '@ling2/ling-coris'
 import { Rdb } from '../../src/index.ts'
 import { apply, Config as RdbDmConfig, name, inject } from '../../src/provider-dm/index.ts'
 

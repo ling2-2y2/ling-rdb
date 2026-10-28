@@ -1,7 +1,7 @@
 lockfileVersion: '9.0'
 
 settings:
-  autoInstallPeers: false
+  autoInstallPeers: true
   excludeLinksFromLockfile: false
 
 importers:
@@ -24,9 +24,9 @@ importers:
         specifier: 8.23.0
         version: 8.23.0
     devDependencies:
-      '@ling2/ling-cordis':
-        specifier: ^2.0.0
-        version: 2.0.0
+      '@ling2/ling-coris':
+        specifier: '*'
+        version: 0.0.1
       '@types/node':
         specifier: ^24.10.1
         version: 24.19.2
@@ -47,7 +47,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: ^4.1.8
-        version: 4.1.11(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15)
+        version: 4.1.11(@types/node@24.19.2)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15))
 
 packages:
 
@@ -210,8 +210,8 @@ packages:
   '@jridgewell/sourcemap-codec@1.6.0':
     resolution: {integrity: sha512-T7jf+5zgsZHwNJ4lvQ7/aezbyk0nNX+zJVWpmHA7VYsEx7a7qr5Rg5IbtJFqkgze5Y2sruq1RUY8Q837Od7iFw==}
 
-  '@ling2/ling-cordis@2.0.0':
-    resolution: {integrity: sha512-s8dsxdgF/XzWAS4R3umttNlNG3zj26evEW3ihEqkKAf1EyN/4ocZXipKVqIlVE7thnqv78MykhblqhZkyocDsA==}
+  '@ling2/ling-coris@0.0.1':
+    resolution: {integrity: sha512-xK6Yf5By3/GpC10olMkEJw4o1wE5N3Hea+D6BfNBFO8CfA/QeVFf5Lt4HhtCsqq9ACIPoJ85bWS6XRKnJUjfJA==}
     engines: {node: '>=22'}
 
   '@oxc-project/types@0.154.0':
@@ -1008,6 +1008,7 @@ packages:
       '@vitest/ui': 4.1.11
       happy-dom: '*'
       jsdom: '*'
+      vite: ^6.0.0 || ^7.0.0 || ^8.0.0
     peerDependenciesMeta:
       '@edge-runtime/vm':
         optional: true
@@ -1132,7 +1133,7 @@ snapshots:
 
   '@jridgewell/sourcemap-codec@1.6.0': {}
 
-  '@ling2/ling-cordis@2.0.0':
+  '@ling2/ling-coris@0.0.1':
     dependencies:
       '@standard-schema/spec': 1.1.0
       supports-color: 11.0.0
@@ -1707,7 +1708,7 @@ snapshots:
       fsevents: 2.3.3
       tsx: 4.23.15
 
-  vitest@4.1.11(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15):
+  vitest@4.1.11(@types/node@24.19.2)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15)):
     dependencies:
       '@vitest/expect': 4.1.11
       '@vitest/mocker': 4.1.11(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15))
@@ -1732,18 +1733,7 @@ snapshots:
     optionalDependencies:
       '@types/node': 24.19.2
     transitivePeerDependencies:
-      - '@vitejs/devtools'
-      - esbuild
-      - jiti
-      - less
       - msw
-      - sass
-      - sass-embedded
-      - stylus
-      - sugarss
-      - terser
-      - tsx
-      - yaml
 
   why-is-node-running@2.3.0:
     dependencies:

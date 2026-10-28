@@ -2,3 +2,5 @@ allowBuilds:
   esbuild: true
   oracledb: true
   dmdb: true
+minimumReleaseAgeExclude:
+  - '@ling2/ling-coris@0.0.1'

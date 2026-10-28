@@ -6,8 +6,8 @@
  * @module @ling2/ling-rdb-oracle
  */
 
-import type { Context } from '@ling2/ling-cordis'
-import { schemastery as z } from '@ling2/ling-cordis'
+import type { Context } from '@ling2/ling-coris'
+import { schemastery as z } from '@ling2/ling-coris'
 import { rdbDatabaseServiceKey } from '../index.ts'
 import { OracleRdbDatabase, type OracleRdbDatabaseOptions } from './database.ts'
 import { parseOracleUrl } from './translate.ts'

@@ -6,8 +6,8 @@
  * @module @ling2/ling-rdb-dm
  */
 
-import type { Context } from '@ling2/ling-cordis'
-import { schemastery as z } from '@ling2/ling-cordis'
+import type { Context } from '@ling2/ling-coris'
+import { schemastery as z } from '@ling2/ling-coris'
 import { rdbDatabaseServiceKey } from '../index.ts'
 import { DmRdbDatabase, type DmRdbDatabaseOptions } from './database.ts'
 import { toDmConnectString } from './translate.ts'
