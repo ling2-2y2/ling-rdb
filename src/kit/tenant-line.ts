@@ -218,7 +218,6 @@ interface StatementTarget {
  * SELECT 首 FROM + JOIN 别名。只覆盖本仓库语句家族的形态。
  */
 function statementTarget(masked: string): StatementTarget {
-  const dbgInsert = /^INSERT INTO (\w+) \(([^)]*)\)( VALUES| SELECT)?/.exec(masked)
   const insert = /^INSERT\s+INTO\s+(\w+)\s*\(([^)]*)\)\s*(VALUES|SELECT)\b/i.exec(masked)
   if (insert !== null && insert[3] !== undefined && insert[3].toUpperCase() === 'VALUES') {
     return { insertColumns: insert[2]!.split(',').map(name => name.trim()), primary: insert[1]!, aliases: undefined }
